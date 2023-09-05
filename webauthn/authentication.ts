@@ -5,7 +5,7 @@ import {
   PublicKeyCredentialRequestOptions,
   UserVerificationRequirement,
 } from "./types.ts";
-import { decodeBase64Url, encodeBase64Url } from "./deps.ts";
+import { CBORType, decodeBase64Url, encodeBase64Url } from "./deps.ts";
 import { parseAuthenticatorData } from "./authenticatorData.ts";
 import { decodeCBOR } from "https://deno.land/x/tiny_cbor@0.2.1/cbor/cbor.ts";
 import { parseCBORToCOSEKey } from "https://deno.land/x/tiny_cose@0.0.6/src/parse.ts";
@@ -66,6 +66,7 @@ export interface WebAuthnAuthenticationResponse {
   multiDevice: boolean;
   backupState: boolean;
   signCount: number;
+  extensions?: CBORType;
 }
 export interface WebAuthnGetData {
   type: "webauthn.get";
@@ -317,5 +318,6 @@ export async function verifyAuthenticationResponse(
     multiDevice: authenticatorData.backupEligibility,
     backupState: authenticatorData.backupState,
     signCount: authenticatorData.signCount,
+    extensions: authenticatorData.extensions
   };
 }
