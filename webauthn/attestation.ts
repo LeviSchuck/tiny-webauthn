@@ -1,12 +1,5 @@
-import {
-  ECDSA_SHA_256,
-  ECDSA_SHA_384,
-  ECDSA_SHA_512,
-  RSASSA_PKCS1_v1_5_SHA_256,
-  RSASSA_PKCS1_v1_5_SHA_384,
-  RSASSA_PKCS1_v1_5_SHA_512,
-} from "./deps.ts";
 import { CreateAuthenticatorResponse } from "./types.ts";
+import { verifySignature } from "./verifier.ts";
 
 export interface AttestationVerifier {
   verify(
@@ -67,39 +60,7 @@ export class PackedAttestationVerifier implements AttestationVerifier {
       signedData.set(create.authDataBytes, 0);
       signedData.set(hash, create.authDataBytes.length);
 
-      if (
-        alg == RSASSA_PKCS1_v1_5_SHA_256 || alg == RSASSA_PKCS1_v1_5_SHA_384 ||
-        alg == RSASSA_PKCS1_v1_5_SHA_512
-      ) {
-        return await crypto.subtle.verify(
-          { name: "RSASSA-PKCS1-v1_5" },
-          key,
-          sig,
-          signedData,
-        );
-      } else if (alg == ECDSA_SHA_256) {
-        return await crypto.subtle.verify(
-          { name: "ECDSA", hash: { name: "SHA-256" } },
-          key,
-          sig,
-          signedData,
-        );
-      } else if (alg == ECDSA_SHA_384) {
-        return await crypto.subtle.verify(
-          { name: "ECDSA", hash: { name: "SHA-384" } },
-          key,
-          sig,
-          signedData,
-        );
-      } else if (alg == ECDSA_SHA_512) {
-        return await crypto.subtle.verify(
-          { name: "ECDSA", hash: { name: "SHA-512" } },
-          key,
-          sig,
-          signedData,
-        );
-      }
-      throw new Error("Packed attestation algorithm not supported");
+      return await verifySignature(alg, key, sig, signedData);
     } else {
       return false;
     }

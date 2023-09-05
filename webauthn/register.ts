@@ -1,6 +1,5 @@
 import {
   AuthenticatorAttestationResponse,
-  AuthenticatorData,
   COSEAlgorithmIdentifier,
   CreateAuthenticatorResponse,
   PublicKeyCredentialCreationOptions,
@@ -10,9 +9,7 @@ import {
   CBORType,
   decodeBase64Url,
   decodeCBOR,
-  decodePartialCBOR,
   importPublicKey,
-  parseCBORToCOSEKey,
 } from "./deps.ts";
 import { timingSafeEqual } from "https://deno.land/std@0.160.0/crypto/timing_safe_equal.ts";
 import {
@@ -20,6 +17,7 @@ import {
   NoneAttestationVerifier,
   PackedAttestationVerifier,
 } from "./attestation.ts";
+import { parseAuthenticatorData } from "./authenticatorData.ts";
 
 export interface RegistrationOptions {
   rpName: string;
@@ -54,6 +52,12 @@ export interface WebAuthnCreateResponse {
   credentialId: Uint8Array;
   coseKey: Uint8Array;
   extensions?: CBORType;
+  multiDevice: boolean;
+  backupState: boolean;
+  userVerified: boolean;
+  signCount: number;
+  clientDataJSON: Uint8Array;
+  attestationObject: Uint8Array;
 }
 
 // deno-lint-ignore require-await
@@ -121,52 +125,6 @@ export async function generateRegistrationOptions(
   return result;
 }
 
-export function parseAuthenticatorData(data: ArrayBuffer): AuthenticatorData {
-  const view = new DataView(data);
-  const flags = view.getUint8(32);
-
-  const result: AuthenticatorData = {
-    rpIdHash: new Uint8Array(data.slice(0, 32)),
-    extensionDataIncluded: (flags & 0b1000_0000) != 0,
-    attestedCredentialDataIncluded: (flags & 0b0100_0000) != 0,
-    backupState: (flags & 0b0001_0000) != 0,
-    backupEligibility: (flags & 0b0000_1000) != 0,
-    userVerified: (flags & 0b0000_0100) != 0,
-    userPresent: (flags & 0b0000_0001) != 0,
-    signCount: view.getUint32(33, false),
-  };
-  let offset = 37;
-  if (data.byteLength > offset && result.attestedCredentialDataIncluded) {
-    const aaguid = new Uint8Array(data.slice(offset, offset + 16));
-    offset += 16;
-    const credentialIdLength = view.getUint16(offset);
-    offset += 2;
-    const credentialId = new Uint8Array(
-      data.slice(offset, offset + credentialIdLength),
-    );
-    offset += credentialIdLength;
-    const [pubKeyCbor, length] = decodePartialCBOR(view, offset);
-    const keyOffset = offset;
-    offset += length;
-    const key = parseCBORToCOSEKey(pubKeyCbor);
-    if (key.alg) {
-      result.attestedCredentialData = {
-        aaguid,
-        credentialId,
-        credentialPublicKey: key,
-        credentialPublicKeyBytes: new Uint8Array(
-          view.buffer.slice(keyOffset, length),
-        ),
-      };
-    }
-  }
-  if (data.byteLength >= offset && result.extensionDataIncluded) {
-    const extensions = decodePartialCBOR(view, offset);
-    result.extensions = extensions;
-  }
-  return result;
-}
-
 export function parseCreateResponse(
   data: ArrayBuffer,
 ): CreateAuthenticatorResponse {
@@ -213,23 +171,31 @@ export async function verifyRegistrationResponse(
     DECODER.decode(options.attestationResponse.clientDataJSON),
   ) as WebAuthnCreateData;
 
+  // Step 7 - check that type is webauthn.create
+  if (clientData.type != "webauthn.create") {
+    throw new Error(
+      `Expected type to be "webauthn.create", not "${clientData.type}"`,
+    );
+  }
+  // Step 8 - check that the challenge matches
   if (
-    // Step 7 - check that type is webauthn.create
-    clientData.type != "webauthn.create" ||
-    // Step 8 - check that the challenge matches
-    !clientData.challenge ||
-    !timingSafeEqual(
+    !clientData.challenge || !timingSafeEqual(
       decodeBase64Url(clientData.challenge),
       options.challenge,
-    ) ||
-    // Step 9 - check that the origin is expected
-    clientData.origin != options.origin ||
-    // Step 10 - topOrigin is not expected so error out
-    clientData.topOrigin
+    )
   ) {
-    throw new Error("Unexpected or malformed client data json");
+    throw new Error("Challenge does not match what is expected");
   }
-
+  // Step 9 - check that the origin is expected
+  if (clientData.origin != options.origin) {
+    throw new Error(
+      `Expected origin to be "${options.origin}", but was "${clientData.origin}"`,
+    );
+  }
+  // Step 10 - topOrigin is not expected so error out
+  if (clientData.topOrigin) {
+    throw new Error("Unexpected topOrigin");
+  }
   // Step 11 - Hash the JSON bytes
   const hash = await crypto.subtle.digest(
     { name: "SHA-256" },
@@ -285,7 +251,7 @@ export async function verifyRegistrationResponse(
   const credentialAlg =
     authenticatorData.attestedCredentialData.credentialPublicKey.alg;
   if (
-    (credentialAlg != -7 && credentialAlg != -257) ||
+    (credentialAlg != -7 && credentialAlg != -257 && credentialAlg != -8) ||
     options.expectedAlgorithms.indexOf(credentialAlg) === -1
   ) {
     throw new Error(`Unexpected credential algorithm ${credentialAlg}`);
@@ -356,5 +322,13 @@ export async function verifyRegistrationResponse(
     credentialId: authenticatorData.attestedCredentialData.credentialId,
     coseKey: authenticatorData.attestedCredentialData.credentialPublicKeyBytes,
     extensions: authenticatorData.extensions,
+    multiDevice: authenticatorData.backupEligibility,
+    backupState: authenticatorData.backupState,
+    userVerified: authenticatorData.userVerified,
+    signCount: authenticatorData.signCount,
+    clientDataJSON: new Uint8Array(options.attestationResponse.clientDataJSON),
+    attestationObject: new Uint8Array(
+      options.attestationResponse.attestationObject,
+    ),
   };
 }
