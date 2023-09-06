@@ -5,11 +5,15 @@ import {
   PublicKeyCredentialRequestOptions,
   UserVerificationRequirement,
 } from "./types.ts";
-import { CBORType, decodeBase64Url, encodeBase64Url } from "./deps.ts";
+import {
+  CBORType,
+  decodeBase64Url,
+  decodeCBOR,
+  encodeBase64Url,
+  importPublicKey,
+  parseCBORToCOSEKey,
+} from "./deps.ts";
 import { parseAuthenticatorData } from "./authenticatorData.ts";
-import { decodeCBOR } from "https://deno.land/x/tiny_cbor@0.2.1/cbor/cbor.ts";
-import { parseCBORToCOSEKey } from "https://deno.land/x/tiny_cose@0.0.6/src/parse.ts";
-import { importPublicKey } from "https://deno.land/x/tiny_cose@0.0.6/src/keys.ts";
 import { verifySignature } from "./verifier.ts";
 
 export interface AuthenticationOptions {
