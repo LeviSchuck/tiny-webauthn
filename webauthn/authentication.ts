@@ -85,7 +85,7 @@ export async function generateAuthenticationOptions(
   if (options.challenge) {
     challenge = options.challenge;
     if (challenge.length < 16) {
-      throw new Error('Insufficient challenge size')
+      throw new Error("Insufficient challenge size");
     }
   }
   const result: PublicKeyCredentialRequestOptions = {
@@ -326,6 +326,6 @@ export async function verifyAuthenticationResponse(
     multiDevice: authenticatorData.backupEligibility,
     backupState: authenticatorData.backupState,
     signCount: authenticatorData.signCount,
-    extensions: authenticatorData.extensions
+    extensions: authenticatorData.extensions,
   };
 }

@@ -70,7 +70,7 @@ export async function generateRegistrationOptions(
   if (options.challenge) {
     challenge = options.challenge;
     if (challenge.length < 16) {
-      throw new Error('Insufficient challenge size')
+      throw new Error("Insufficient challenge size");
     }
   }
   const result: PublicKeyCredentialCreationOptions = {
@@ -100,7 +100,10 @@ export async function generateRegistrationOptions(
   };
 
   if (options.supportedAlgorithms) {
-    result.pubKeyCredParams = options.supportedAlgorithms.map(alg => ({type: "public-key", alg}));
+    result.pubKeyCredParams = options.supportedAlgorithms.map((alg) => ({
+      type: "public-key",
+      alg,
+    }));
   }
 
   if (options.rpId) {
@@ -196,7 +199,7 @@ export async function verifyRegistrationResponse(
       options.challenge,
     )
   ) {
-    console.log(clientData.challenge)
+    console.log(clientData.challenge);
     throw new Error("Challenge does not match what is expected");
   }
   // Step 9 - check that the origin is expected
