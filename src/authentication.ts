@@ -69,7 +69,7 @@ export interface WebAuthnAuthenticationResponse {
   signCount: number;
   extensions?: CBORType;
 }
-export interface WebAuthnGetData {
+interface WebAuthnGetData {
   type: "webauthn.get";
   challenge: string;
   origin: string;
