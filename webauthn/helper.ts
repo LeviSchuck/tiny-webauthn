@@ -34,7 +34,7 @@ export function parseWebAuthnObject(
 > {
   return JSON.parse(json, (_k, v) => {
     if (typeof v == "string" && v.startsWith(B64_PREFIX)) {
-      return decodeBase64(v.substring(B64_PREFIX.length));
+      return decodeBase64(v.substring(B64_PREFIX.length)).buffer;
     }
     return v;
   });

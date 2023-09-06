@@ -5,8 +5,6 @@ import {
   ECDSA_SHA_512,
   EDDSA,
   RSASSA_PKCS1_v1_5_SHA_256,
-  RSASSA_PKCS1_v1_5_SHA_384,
-  RSASSA_PKCS1_v1_5_SHA_512,
 } from "./deps.ts";
 
 export async function verifySignature(
@@ -16,8 +14,7 @@ export async function verifySignature(
   signedData: Uint8Array,
 ): Promise<boolean> {
   if (
-    alg == RSASSA_PKCS1_v1_5_SHA_256 || alg == RSASSA_PKCS1_v1_5_SHA_384 ||
-    alg == RSASSA_PKCS1_v1_5_SHA_512
+    alg == RSASSA_PKCS1_v1_5_SHA_256
   ) {
     return await crypto.subtle.verify(
       { name: "RSASSA-PKCS1-v1_5" },

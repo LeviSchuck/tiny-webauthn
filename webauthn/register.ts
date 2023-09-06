@@ -29,6 +29,8 @@ export interface RegistrationOptions {
   kind?: "passkey" | "server-side";
   excludeCredentials?: PublicKeyCredentialDescriptor[];
   extensions?: object;
+  supportedAlgorithms?: COSEAlgorithmIdentifier[];
+  challenge?: Uint8Array;
 }
 
 export interface RegistrationVerification {
@@ -64,7 +66,13 @@ export interface WebAuthnCreateResponse {
 export async function generateRegistrationOptions(
   options: RegistrationOptions,
 ): Promise<PublicKeyCredentialCreationOptions> {
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  let challenge = crypto.getRandomValues(new Uint8Array(32));
+  if (options.challenge) {
+    challenge = options.challenge;
+    if (challenge.length < 16) {
+      throw new Error('Insufficient challenge size')
+    }
+  }
   const result: PublicKeyCredentialCreationOptions = {
     challenge,
     rp: {
@@ -90,6 +98,10 @@ export async function generateRegistrationOptions(
       userVerification: "preferred",
     },
   };
+
+  if (options.supportedAlgorithms) {
+    result.pubKeyCredParams = options.supportedAlgorithms.map(alg => ({type: "public-key", alg}));
+  }
 
   if (options.rpId) {
     result.rp.id = options.rpId;
@@ -184,6 +196,7 @@ export async function verifyRegistrationResponse(
       options.challenge,
     )
   ) {
+    console.log(clientData.challenge)
     throw new Error("Challenge does not match what is expected");
   }
   // Step 9 - check that the origin is expected

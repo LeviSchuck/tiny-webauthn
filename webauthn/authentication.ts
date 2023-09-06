@@ -19,6 +19,7 @@ export interface AuthenticationOptions {
   allowCredentials?: PublicKeyCredentialDescriptor[];
   // deno-lint-ignore no-explicit-any
   extensions?: any;
+  challenge?: Uint8Array;
 }
 
 export interface AuthenticatingUser {
@@ -76,10 +77,17 @@ export interface WebAuthnGetData {
   topOrigin?: string;
 }
 
-export function generateAuthenticationOptions(
+// deno-lint-ignore require-await
+export async function generateAuthenticationOptions(
   options: AuthenticationOptions,
-): PublicKeyCredentialRequestOptions {
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
+): Promise<PublicKeyCredentialRequestOptions> {
+  let challenge = crypto.getRandomValues(new Uint8Array(32));
+  if (options.challenge) {
+    challenge = options.challenge;
+    if (challenge.length < 16) {
+      throw new Error('Insufficient challenge size')
+    }
+  }
   const result: PublicKeyCredentialRequestOptions = {
     challenge,
   };
@@ -115,7 +123,7 @@ export function generateAuthenticationOptions(
   }
   result.allowCredentials = options.allowCredentials || [];
 
-  return result;
+  return Promise.resolve(result);
 }
 
 const DECODER = new TextDecoder();
