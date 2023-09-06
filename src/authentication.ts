@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "https://deno.land/std@0.160.0/crypto/timing_safe_equal.ts";
+import { timingSafeEqual } from "./timingSafeEqual.ts";
 import {
   AuthenticatorAssertionResponse,
   PublicKeyCredentialDescriptor,

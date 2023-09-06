@@ -4,7 +4,7 @@ import {
 } from "https://deno.land/std@0.195.0/assert/mod.ts";
 import { describe, it } from "https://deno.land/std@0.195.0/testing/bdd.ts";
 import { decodeBase64Url } from "./deps.ts";
-import { timingSafeEqual } from "https://deno.land/std@0.160.0/crypto/timing_safe_equal.ts";
+import { timingSafeEqual } from "./timingSafeEqual.ts";
 import {
   AuthenticatingUser,
   CredentialRecord,
