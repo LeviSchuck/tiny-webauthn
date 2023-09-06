@@ -19,9 +19,9 @@ await build({
       name: "@levischuck/tiny-cbor",
       version: "0.2.2",
     },
-    "https://deno.land/x/tiny_cose@0.0.8/index.ts": {
+    "https://deno.land/x/tiny_cose@0.0.9/index.ts": {
       name: "@levischuck/tiny-cose",
-      version: "0.0.8",
+      version: "0.0.9",
     },
   },
   package: {

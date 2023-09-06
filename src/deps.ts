@@ -21,9 +21,9 @@ export {
   RSASSA_PKCS1_v1_5_SHA_256,
   RSASSA_PKCS1_v1_5_SHA_384,
   RSASSA_PKCS1_v1_5_SHA_512,
-} from "https://deno.land/x/tiny_cose@0.0.8/index.ts";
+} from "https://deno.land/x/tiny_cose@0.0.9/index.ts";
 export type {
   ALG_ALL,
   COSEKeyAll,
   COSEPublicKey,
-} from "https://deno.land/x/tiny_cose@0.0.8/index.ts";
+} from "https://deno.land/x/tiny_cose@0.0.9/index.ts";
