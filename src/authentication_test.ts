@@ -17,7 +17,6 @@ const CHALLENGE2 = decodeBase64Url(
   "VDSOpXQrhjj2XkMOH742cBQWhkeiwsrWAcNNoW9ts48",
 );
 
-const USER_HANDLE = decodeBase64Url("VGFjbw");
 const USER_ID = decodeBase64Url("VGFjbw");
 
 // deno-lint-ignore require-await
@@ -31,7 +30,6 @@ async function findCredential(
         "pAEBAycgBiFYIHAYBh3a4RSiuvcSN61MILzWN3yPTbHIJoMeGDXqqK_L",
       ),
       signCount: 1,
-      userHandle: USER_HANDLE,
       userId: USER_ID,
       userVerified: true,
     };
@@ -42,18 +40,16 @@ async function findCredential(
 // deno-lint-ignore require-await
 async function findAuthenticatingUser(): Promise<AuthenticatingUser | null> {
   return {
-    userHandle: USER_HANDLE,
     userId: USER_ID,
   };
 }
 
 // deno-lint-ignore require-await
-async function findAccountByUserHandle(
-  userHandle: Uint8Array,
+async function findAccountByUserId(
+  userId: Uint8Array,
 ): Promise<AuthenticatingUser | null> {
-  if (timingSafeEqual(userHandle, USER_HANDLE)) {
+  if (timingSafeEqual(userId, USER_ID)) {
     return {
-      userHandle: USER_HANDLE,
       userId: USER_ID,
     };
   }
@@ -78,7 +74,7 @@ describe("Authentication", () => {
       origin: "https://levischuck.com",
       rpId: "levischuck.com",
       response: {
-        userHandle: USER_HANDLE.buffer,
+        userHandle: USER_ID.buffer,
         authenticatorData:
           decodeBase64Url("GX3XEkLc5hSbg4PrSibs8QePOaZxVoZYVHuCR7T-AgkFAAAABA")
             .buffer,
@@ -94,7 +90,6 @@ describe("Authentication", () => {
     });
     assert(timingSafeEqual(verified.credentialId, CREDENTIAL_ID));
     assertEquals(verified.signCount, 4);
-    assertEquals(verified.authenticatingUser.userHandle, USER_HANDLE);
     assertEquals(verified.authenticatingUser.userId, USER_ID);
     assertEquals(verified.userVerified, true);
     assertEquals(verified.backupState, false);
@@ -108,7 +103,7 @@ describe("Authentication", () => {
       origin: "https://levischuck.com",
       rpId: "levischuck.com",
       response: {
-        userHandle: USER_HANDLE.buffer,
+        userHandle: USER_ID.buffer,
         authenticatorData:
           decodeBase64Url("GX3XEkLc5hSbg4PrSibs8QePOaZxVoZYVHuCR7T-AgkFAAAABA")
             .buffer,
@@ -119,12 +114,11 @@ describe("Authentication", () => {
           "V5YJBn-Bd6-hxp7Yf6u8sxP3orgcE3pcnL5SoaJaSxuqcnkDC2qgc1XUrG320o91bdbQBuVsp6LyUCHBhfFMDg",
         ).buffer,
       },
-      findAccountByUserHandle,
+      findAccountByUserId,
       findCredential,
     });
     assert(timingSafeEqual(verified.credentialId, CREDENTIAL_ID));
     assertEquals(verified.signCount, 4);
-    assertEquals(verified.authenticatingUser.userHandle, USER_HANDLE);
     assertEquals(verified.authenticatingUser.userId, USER_ID);
     assertEquals(verified.userVerified, true);
     assertEquals(verified.backupState, false);

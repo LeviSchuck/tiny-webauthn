@@ -28,12 +28,10 @@ export interface AuthenticationOptions {
 
 export interface AuthenticatingUser {
   userId: Uint8Array;
-  userHandle: Uint8Array;
 }
 
 export interface CredentialRecord {
   userId: Uint8Array;
-  userHandle: Uint8Array;
   credentialId: Uint8Array;
   signCount: number;
   userVerified: boolean;
@@ -48,8 +46,8 @@ export interface AuthenticationResponse {
   allowCredentials?: Uint8Array[];
   response: AuthenticatorAssertionResponse;
   findAuthenticatingUser?(): Promise<AuthenticatingUser | null>;
-  findAccountByUserHandle?(
-    userHandle: Uint8Array,
+  findAccountByUserId?(
+    userId: Uint8Array,
   ): Promise<AuthenticatingUser | null>;
   findCredential?(credentialId: Uint8Array): Promise<CredentialRecord | null>;
   origin: string;
@@ -187,10 +185,10 @@ export async function verifyAuthenticationResponse(
   //           credential record with an ID that matches the submitted
   //           credential.
   if (!authenticatingUser) {
-    if (!options.response.userHandle || !options.findAccountByUserHandle) {
+    if (!options.response.userHandle || !options.findAccountByUserId) {
       throw new Error("Could not find user");
     }
-    authenticatingUser = await options.findAccountByUserHandle(
+    authenticatingUser = await options.findAccountByUserId(
       new Uint8Array(options.response.userHandle),
     );
     if (!authenticatingUser) {

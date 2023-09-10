@@ -9,7 +9,10 @@ import {
   CBORType,
   decodeBase64Url,
   decodeCBOR,
+  ECDSA_SHA_256,
+  EDDSA,
   importPublicKey,
+  RSASSA_PKCS1_v1_5_SHA_256,
 } from "./deps.ts";
 import { timingSafeEqual } from "./timingSafeEqual.ts";
 import {
@@ -31,6 +34,7 @@ export interface RegistrationOptions {
   extensions?: object;
   supportedAlgorithms?: COSEAlgorithmIdentifier[];
   challenge?: Uint8Array;
+  timeoutMilliseconds?: number;
 }
 
 export interface RegistrationVerification {
@@ -39,7 +43,7 @@ export interface RegistrationVerification {
   origin: string;
   challenge: Uint8Array;
   expectUserVerification?: true;
-  expectedAlgorithms: COSEAlgorithmIdentifier[];
+  expectedAlgorithms?: COSEAlgorithmIdentifier[];
 }
 
 interface WebAuthnCreateData {
@@ -137,6 +141,10 @@ export async function generateRegistrationOptions(
     result.excludeCredentials = options.excludeCredentials;
   }
 
+  if (options.timeoutMilliseconds) {
+    result.timeout = options.timeoutMilliseconds;
+  }
+
   return result;
 }
 
@@ -199,7 +207,6 @@ export async function verifyRegistrationResponse(
       options.challenge,
     )
   ) {
-    console.log(clientData.challenge);
     throw new Error("Challenge does not match what is expected");
   }
   // Step 9 - check that the origin is expected
@@ -266,9 +273,13 @@ export async function verifyRegistrationResponse(
   // Also known as step 16 in https://www.w3.org/TR/webauthn-3/
   const credentialAlg =
     authenticatorData.attestedCredentialData.credentialPublicKey.alg;
+  const expectedAlgorithms = options.expectedAlgorithms ||
+    [ECDSA_SHA_256, RSASSA_PKCS1_v1_5_SHA_256];
+
   if (
-    (credentialAlg != -7 && credentialAlg != -257 && credentialAlg != -8) ||
-    options.expectedAlgorithms.indexOf(credentialAlg) === -1
+    (credentialAlg != ECDSA_SHA_256 &&
+      credentialAlg != RSASSA_PKCS1_v1_5_SHA_256 && credentialAlg != EDDSA) ||
+    expectedAlgorithms.indexOf(credentialAlg) === -1
   ) {
     throw new Error(`Unexpected credential algorithm ${credentialAlg}`);
   }

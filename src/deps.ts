@@ -26,4 +26,5 @@ export type {
   ALG_ALL,
   COSEKeyAll,
   COSEPublicKey,
+  ECDSA_ALG,
 } from "https://deno.land/x/tiny_cose@0.0.9/index.ts";

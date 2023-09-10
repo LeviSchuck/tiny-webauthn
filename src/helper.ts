@@ -27,11 +27,10 @@ export function stringifyWebAuthnObject(
 
 export function parseWebAuthnObject(
   json: string,
-): Promise<
+):
   | PublicKeyCredentialCreationOptions
   | AuthenticatorAttestationResponse
-  | PublicKeyCredentialRequestOptions
-> {
+  | PublicKeyCredentialRequestOptions {
   return JSON.parse(json, (_k, v) => {
     if (typeof v == "string" && v.startsWith(B64_PREFIX)) {
       return decodeBase64(v.substring(B64_PREFIX.length)).buffer;
