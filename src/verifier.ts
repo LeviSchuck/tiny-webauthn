@@ -3,8 +3,6 @@ import {
   ALG_ALL,
   ECDSA_ALG,
   ECDSA_SHA_256,
-  ECDSA_SHA_384,
-  ECDSA_SHA_512,
   EDDSA,
   RSASSA_PKCS1_v1_5_SHA_256,
 } from "./deps.ts";
@@ -31,11 +29,10 @@ export function unwrapAsn1EC2Signature(
   sig: Uint8Array,
   alg: ECDSA_ALG,
 ): Uint8Array {
-  let size = 32;
-  if (alg == ECDSA_SHA_384) {
-    size = 48;
-  } else if (alg == ECDSA_SHA_512) {
-    size = 66;
+  const size = 32;
+  // Vary size depending on algorithm
+  if (alg != ECDSA_SHA_256) {
+    throw new Error("Unsupported algorithm");
   }
   const output = new Uint8Array(size * 2);
 
@@ -112,20 +109,6 @@ export async function verifySignature(
     console.log(`Sig: ${encodeHex(sig)}`);
     return await crypto.subtle.verify(
       { name: "ECDSA", hash: { name: "SHA-256" } },
-      key,
-      unwrapAsn1EC2Signature(sig, alg),
-      signedData,
-    );
-  } else if (alg == ECDSA_SHA_384) {
-    return await crypto.subtle.verify(
-      { name: "ECDSA", hash: { name: "SHA-384" } },
-      key,
-      unwrapAsn1EC2Signature(sig, alg),
-      signedData,
-    );
-  } else if (alg == ECDSA_SHA_512) {
-    return await crypto.subtle.verify(
-      { name: "ECDSA", hash: { name: "SHA-512" } },
       key,
       unwrapAsn1EC2Signature(sig, alg),
       signedData,
