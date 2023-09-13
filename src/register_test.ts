@@ -22,7 +22,9 @@ const RSA_CHALLENGE = decodeBase64Url(
   "j9OlhTRaZkF5_CC7P3uTn8t1NGYF9ujB4gSe6dtSvEU_RnxZVSiQs_k9nkmfzcgfAAABipBCpa6oR_D0VCCeN1JxzN0",
 );
 
-const ECDSA_CHALLENGE = decodeBase64Url('LtqCES8H7iaIfqUHNDBOx3IRKLmhxze2QiO5b0KfsizByCBhY7ppivunLKEYKDDZAAABipCuvAqTFWLdAsycMgDAFEs')
+const ECDSA_CHALLENGE = decodeBase64Url(
+  "LtqCES8H7iaIfqUHNDBOx3IRKLmhxze2QiO5b0KfsizByCBhY7ppivunLKEYKDDZAAABipCuvAqTFWLdAsycMgDAFEs",
+);
 
 describe("Registration", () => {
   it("Can generate registration options", async () => {
@@ -126,8 +128,11 @@ describe("Registration", () => {
   });
   it("Can verify an ES256 registration", async () => {
     const credential = {
-      rawId: decodeBase64Url("YOgmRpF5PncY0hQtSVEKAqH93RWUHKm_Tq3qJJ3dIyB0qwhBMA34LxbgnaIyZQMWV1J6keFXlYLX6lPtsD0kOQ"),
-      id: "YOgmRpF5PncY0hQtSVEKAqH93RWUHKm_Tq3qJJ3dIyB0qwhBMA34LxbgnaIyZQMWV1J6keFXlYLX6lPtsD0kOQ",
+      rawId: decodeBase64Url(
+        "YOgmRpF5PncY0hQtSVEKAqH93RWUHKm_Tq3qJJ3dIyB0qwhBMA34LxbgnaIyZQMWV1J6keFXlYLX6lPtsD0kOQ",
+      ),
+      id:
+        "YOgmRpF5PncY0hQtSVEKAqH93RWUHKm_Tq3qJJ3dIyB0qwhBMA34LxbgnaIyZQMWV1J6keFXlYLX6lPtsD0kOQ",
       type: "public-key",
       authenticatorAttachment: "cross-platform",
       response: {
