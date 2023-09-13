@@ -6,3 +6,7 @@ ignored
 scratch.txt
 scratch.ts
 scratch
+example-app/static/rootCA.pem
+example-app/localhost-cert.pem
+example-app/localhost-key.pem
+.DS_Store

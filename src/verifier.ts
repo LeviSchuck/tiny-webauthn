@@ -1,4 +1,3 @@
-import { encodeHex } from "https://deno.land/x/tiny_encodings@0.2.1/encoding.ts";
 import {
   ALG_ALL,
   ECDSA_ALG,
@@ -95,7 +94,6 @@ export async function verifySignature(
   sig: Uint8Array,
   signedData: Uint8Array,
 ): Promise<boolean> {
-  console.log(`Incoming signature with length: ${sig.length}`);
   if (
     alg == RSASSA_PKCS1_v1_5_SHA_256
   ) {
@@ -106,7 +104,6 @@ export async function verifySignature(
       signedData,
     );
   } else if (alg == ECDSA_SHA_256) {
-    console.log(`Sig: ${encodeHex(sig)}`);
     return await crypto.subtle.verify(
       { name: "ECDSA", hash: { name: "SHA-256" } },
       key,

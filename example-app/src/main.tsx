@@ -165,15 +165,15 @@ app.post("/registration-options", async (c) => {
   const challenge = await assembleChallenge(random, expiration, id);
 
   const options = await generateRegistrationOptions({
-    rpName: "example-app",
     rpId: "localhost",
+    rpName: "example-app",
     userDisplayName: username,
     userId: id,
     userName: username,
     timeoutMilliseconds: 120_000,
     challenge,
     kind: passkey && "passkey" || "server-side",
-    supportedAlgorithms: [-7, -257],
+    supportedAlgorithms: [-8, -7, -257],
   });
 
   const json = {
@@ -184,6 +184,7 @@ app.post("/registration-options", async (c) => {
       userId: encodeBase64Url(id),
     },
   };
+  console.log(json.options);
   return c.json(json);
 });
 
@@ -201,10 +202,12 @@ app.post("/register", async (c) => {
       message: "Missing attestationObject",
     }, 400);
   }
+
   const clientDataJson = JSON.parse(
     DECODER.decode(response.clientDataJSON),
   ) as { challenge: string };
   const challenge = decodeBase64Url(clientDataJson.challenge);
+
   let userId: Uint8Array;
   try {
     const result = await disassembleAndVerifyChallenge(challenge);
@@ -243,7 +246,7 @@ app.post("/register", async (c) => {
   try {
     verification = await verifyRegistrationResponse({
       rpId: "localhost",
-      origin: "http://localhost:8000",
+      origin: "https://localhost:8443",
       attestationResponse: response as AuthenticatorAttestationResponse,
       challenge,
       expectedAlgorithms: [-8, -7, -257],
@@ -260,6 +263,19 @@ app.post("/register", async (c) => {
     userId,
     username: body.username,
   });
+  console.log("# Registration");
+  console.log("#" + "-".repeat(79));
+  console.log(`username: ${body.username}`);
+  console.log(`userId: ${encodeBase64Url(userId)}`);
+  console.log(`challenge: ${encodeBase64Url(challenge)}`);
+  console.log(`clientDataJson: ${encodeBase64Url(response.clientDataJSON)}`);
+  console.log(
+    `attestationObject: ${encodeBase64Url(response.attestationObject)}`,
+  );
+  console.log(`credentialId: ${encodeBase64Url(verification.credentialId)}`);
+  console.log(`publicKey: ${encodeBase64Url(verification.coseKey)}`);
+  console.log(`signCount: ${verification.signCount}`);
+  console.log("#" + "-".repeat(79));
 
   await DATA_SOURCE.createCredential({
     credentialId: verification.credentialId,
@@ -329,9 +345,6 @@ app.post("/authentication", async (c) => {
     }, 400);
   }
 
-  console.log(`challenge`, challenge);
-  console.log("signature", encodeBase64Url(response.signature));
-
   // The user must exist
   const existingUser = await DATA_SOURCE.findUserByUserId(userId);
   if (!existingUser) {
@@ -345,7 +358,7 @@ app.post("/authentication", async (c) => {
   try {
     verification = await verifyAuthenticationResponse({
       rpId: "localhost",
-      origin: "http://localhost:8000",
+      origin: "https://localhost:8443",
       challenge,
       credentialId: decodeBase64Url(body.credentialId),
       response: response,
@@ -359,8 +372,6 @@ app.post("/authentication", async (c) => {
         if (!credential) {
           return null;
         }
-        console.log(credential);
-        console.log(encodeHex(credential.publicKey));
         return {
           credentialId: credential.credentialId,
           publicKey: credential.publicKey,
@@ -388,6 +399,26 @@ app.post("/authentication", async (c) => {
     sessionId,
     userId,
   });
+
+  console.log("# Authentication");
+  console.log("#" + "-".repeat(79));
+  console.log(`userId: ${encodeBase64Url(userId)}`);
+  console.log(`challenge: ${encodeBase64Url(challenge)}`);
+  console.log(`clientDataJson: ${encodeBase64Url(response.clientDataJSON)}`);
+  console.log(`signature: ${encodeBase64Url(response.signature)}`);
+  console.log(
+    `authenticatorData: ${encodeBase64Url(response.authenticatorData)}`,
+  );
+  console.log(
+    `attestationObject: ${
+      response.attestationObject && encodeBase64Url(response.attestationObject)
+    }`,
+  );
+  console.log(`credentialId: ${encodeBase64Url(verification.credentialId)}`);
+  console.log(`multiDevice: ${verification.multiDevice}`);
+  console.log(`signCount: ${verification.signCount}`);
+  console.log(`userVerified: ${verification.userVerified}`);
+  console.log("#" + "-".repeat(79));
 
   setCookie(c, "session", sessionId, {
     httpOnly: true,
@@ -564,4 +595,36 @@ app.get("/sign-in", (c) => {
   );
 });
 
-Deno.serve(app.fetch);
+const server = Deno.listenTls({
+  port: 8443,
+  key: Deno.readTextFileSync("localhost-key.pem"),
+  cert: Deno.readTextFileSync("localhost-cert.pem"),
+});
+
+async function handle(conn: Deno.Conn) {
+  try {
+    const httpConn = Deno.serveHttp(conn);
+
+    for await (const requestEvent of httpConn) {
+      try {
+        console.log(
+          `${requestEvent.request.method} ${requestEvent.request.url}`,
+        );
+        const response = await app.fetch(
+          requestEvent.request,
+          undefined,
+          undefined,
+        );
+        await requestEvent.respondWith(response);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+for await (const conn of server) {
+  handle(conn);
+}
