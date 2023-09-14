@@ -1,5 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-write --watch src/main.tsx"
+    "localhost": "deno run --allow-net --allow-read --allow-write --watch src/main.tsx localhost.json",
+    "https": "deno run --allow-net --allow-read --allow-write --watch src/main.tsx https.json"
   }
 }

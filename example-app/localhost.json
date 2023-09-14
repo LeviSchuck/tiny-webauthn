@@ -1,0 +1,8 @@
+{
+  "rpId": "localhost",
+  "port": 8080,
+  "origins": [
+    "http://localhost:8080"
+  ],
+  "secret": "FGRx6U2D1Pqll0hyADDyZVUA5q1goWdmpgh_T2CVGho"
+}

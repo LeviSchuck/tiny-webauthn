@@ -1,0 +1,10 @@
+{
+  "rpId": "levi-schucks-macbook-pro.local",
+  "port": 8443,
+  "origins": [
+    "https://levi-schucks-macbook-pro.local:8443"
+  ],
+  "secret": "FGRx6U2D1Pqll0hyADDyZVUA5q1goWdmpgh_T2CVGho",
+  "keyFile": "localhost-key.pem",
+  "certFile": "localhost-cert.pem"
+}

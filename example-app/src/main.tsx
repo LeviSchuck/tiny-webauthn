@@ -22,16 +22,31 @@ import {
 import {
   decodeBase64Url,
   encodeBase64Url,
-  encodeHex,
 } from "https://deno.land/x/tiny_encodings@0.2.1/encoding.ts";
 import { timingSafeEqual } from "../../src/timingSafeEqual.ts";
 import { DataSource } from "./data.ts";
 import { JsonData } from "./jsonData.ts";
 
+const jsonConfigFile = Deno.args[0];
+if (!jsonConfigFile) {
+  throw new Error(
+    "Please add a JSON configuration file (like localhost.json) as the first argument",
+  );
+}
+const jsonConfig = JSON.parse(Deno.readTextFileSync(Deno.args[0]));
+
+const RP_ID = jsonConfig.rpId || "localhost";
+const PORT = jsonConfig.port || 8000;
+const ORIGINS = jsonConfig.origins || ["https://localhost:8000"];
+const SECRET = jsonConfig.secret ||
+  "FGRx6U2D1Pqll0hyADDyZVUA5q1goWdmpgh_T2CVGho";
+const HTTPS_KEY = jsonConfig.keyFile || null;
+const HTTPS_CERT = jsonConfig.certFile || null;
+
 // This is an example app, do not use this secret
 const SECRET_KEY = await crypto.subtle.importKey(
   "raw",
-  decodeBase64Url("FGRx6U2D1Pqll0hyADDyZVUA5q1goWdmpgh_T2CVGho"),
+  decodeBase64Url(SECRET),
   { name: "HMAC", hash: "SHA-256" },
   false,
   ["sign", "verify"],
@@ -165,7 +180,7 @@ app.post("/registration-options", async (c) => {
   const challenge = await assembleChallenge(random, expiration, id);
 
   const options = await generateRegistrationOptions({
-    rpId: "localhost",
+    rpId: RP_ID,
     rpName: "example-app",
     userDisplayName: username,
     userId: id,
@@ -245,8 +260,8 @@ app.post("/register", async (c) => {
   let verification: WebAuthnCreateResponse;
   try {
     verification = await verifyRegistrationResponse({
-      rpId: "localhost",
-      origin: ["https://localhost:8443"],
+      rpId: RP_ID,
+      origin: ORIGINS,
       attestationResponse: response as AuthenticatorAttestationResponse,
       challenge,
       expectedAlgorithms: [-8, -7, -257],
@@ -357,8 +372,8 @@ app.post("/authentication", async (c) => {
   let verification: WebAuthnAuthenticationResponse;
   try {
     verification = await verifyAuthenticationResponse({
-      rpId: "localhost",
-      origin: ["https://localhost:8443"],
+      rpId: RP_ID,
+      origin: ORIGINS,
       challenge,
       credentialId: decodeBase64Url(body.credentialId),
       response: response,
@@ -481,7 +496,7 @@ app.post("/authentication-options", async (c) => {
       type: "public-key",
       id: c.credentialId,
     })),
-    rpId: "localhost",
+    rpId: RP_ID,
     challenge,
   });
 
@@ -595,25 +610,22 @@ app.get("/sign-in", (c) => {
   );
 });
 
-const server = Deno.listenTls({
-  port: 8443,
-  key: Deno.readTextFileSync("localhost-key.pem"),
-  cert: Deno.readTextFileSync("localhost-cert.pem"),
-});
-
 async function handle(conn: Deno.Conn) {
+  const httpConn = Deno.serveHttp(conn);
   try {
-    const httpConn = Deno.serveHttp(conn);
-
     for await (const requestEvent of httpConn) {
       try {
-        console.log(
-          `${requestEvent.request.method} ${requestEvent.request.url}`,
-        );
+        const begin = new Date().getTime();
         const response = await app.fetch(
           requestEvent.request,
           undefined,
           undefined,
+        );
+        const end = new Date().getTime();
+        console.log(
+          `${requestEvent.request.method} ${requestEvent.request.url} ${
+            end - begin
+          }ms`,
         );
         await requestEvent.respondWith(response);
       } catch (error) {
@@ -622,9 +634,31 @@ async function handle(conn: Deno.Conn) {
     }
   } catch (e) {
     console.error(e);
+  } finally {
+    try {
+      httpConn.close();
+    } catch (_e) {
+      console.warn("Could not close connection");
+    }
   }
 }
 
-for await (const conn of server) {
-  handle(conn);
+if (HTTPS_CERT && HTTPS_KEY) {
+  const server = Deno.listenTls({
+    port: PORT,
+    key: Deno.readTextFileSync(HTTPS_KEY),
+    cert: Deno.readTextFileSync(HTTPS_CERT),
+  });
+
+  for await (const conn of server) {
+    handle(conn);
+  }
+} else {
+  const server = Deno.listen({
+    port: PORT,
+  });
+
+  for await (const conn of server) {
+    handle(conn);
+  }
 }
