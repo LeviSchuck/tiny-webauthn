@@ -114,7 +114,7 @@ describe("Authentication", () => {
     const verified = await verifyAuthenticationResponse({
       challenge: CHALLENGE2,
       credentialId: CREDENTIAL_ID,
-      origin: "https://levischuck.com",
+      origin: ["https://levischuck.com"],
       rpId: "levischuck.com",
       response: {
         userHandle: USER_ID.buffer,
@@ -143,7 +143,7 @@ describe("Authentication", () => {
     const verified = await verifyAuthenticationResponse({
       challenge: CHALLENGE2,
       credentialId: CREDENTIAL_ID,
-      origin: "https://levischuck.com",
+      origin: ["https://levischuck.com"],
       rpId: "levischuck.com",
       response: {
         userHandle: USER_ID.buffer,
@@ -172,7 +172,7 @@ describe("Authentication", () => {
     const verified = await verifyAuthenticationResponse({
       challenge: ECDSA_CHALLENGE,
       credentialId: ECDSA_CREDENTIAL_ID,
-      origin: "https://localhost:8443",
+      origin: ["https://localhost:8443"],
       rpId: "localhost",
       response: {
         userHandle: ECDSA_USER_ID.buffer,
@@ -200,7 +200,7 @@ describe("Authentication", () => {
     const verified = await verifyAuthenticationResponse({
       challenge: RSA_CHALLENGE,
       credentialId: RSA_CREDENTIAL_ID,
-      origin: "https://levis-macbook-pro.local:8443",
+      origin: ["https://levis-macbook-pro.local:8443"],
       rpId: "levis-macbook-pro.local",
       response: {
         userHandle: RSA_USER_ID.buffer,

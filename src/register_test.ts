@@ -69,7 +69,7 @@ describe("Registration", () => {
       attestationResponse: credential.response,
       challenge: CHALLENGE1,
       expectedAlgorithms: [EDDSA],
-      origin: "https://levischuck.com",
+      origin: ["https://levischuck.com"],
       rpId: "levischuck.com",
     });
     assertEquals(
@@ -107,7 +107,7 @@ describe("Registration", () => {
       attestationResponse: credential.response,
       challenge: RSA_CHALLENGE,
       expectedAlgorithms: [RSASSA_PKCS1_v1_5_SHA_256],
-      origin: "https://levis-macbook-pro.local:8443",
+      origin: ["https://levis-macbook-pro.local:8443"],
       rpId: "levis-macbook-pro.local",
     });
     assertEquals(
@@ -148,7 +148,7 @@ describe("Registration", () => {
       attestationResponse: credential.response,
       challenge: ECDSA_CHALLENGE,
       expectedAlgorithms: [ECDSA_SHA_256],
-      origin: "https://localhost:8443",
+      origin: ["https://localhost:8443"],
       rpId: "localhost",
     });
     assertEquals(

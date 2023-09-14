@@ -246,7 +246,7 @@ app.post("/register", async (c) => {
   try {
     verification = await verifyRegistrationResponse({
       rpId: "localhost",
-      origin: "https://localhost:8443",
+      origin: ["https://localhost:8443"],
       attestationResponse: response as AuthenticatorAttestationResponse,
       challenge,
       expectedAlgorithms: [-8, -7, -257],
@@ -358,7 +358,7 @@ app.post("/authentication", async (c) => {
   try {
     verification = await verifyAuthenticationResponse({
       rpId: "localhost",
-      origin: "https://localhost:8443",
+      origin: ["https://localhost:8443"],
       challenge,
       credentialId: decodeBase64Url(body.credentialId),
       response: response,

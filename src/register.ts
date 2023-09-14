@@ -40,7 +40,7 @@ export interface RegistrationOptions {
 export interface RegistrationVerification {
   attestationResponse: AuthenticatorAttestationResponse;
   rpId: string;
-  origin: string;
+  origin: string[];
   challenge: Uint8Array;
   expectUserVerification?: true;
   expectedAlgorithms?: COSEAlgorithmIdentifier[];
@@ -210,9 +210,27 @@ export async function verifyRegistrationResponse(
     throw new Error("Challenge does not match what is expected");
   }
   // Step 9 - check that the origin is expected
-  if (clientData.origin != options.origin) {
+  if (options.origin.length == 0) {
+    throw new Error("Expected an origin from the verification function");
+  }
+  let originMatched = false;
+  const encodedClientOrigin = ENCODER.encode(clientData.origin);
+  for (const origin of options.origin) {
+    if (origin.length == clientData.origin.length) {
+      originMatched = timingSafeEqual(
+        ENCODER.encode(origin),
+        encodedClientOrigin,
+      );
+    }
+    if (originMatched) {
+      break;
+    }
+  }
+  if (!originMatched) {
     throw new Error(
-      `Expected origin to be "${options.origin}", but was "${clientData.origin}"`,
+      `Expected origin to be one of "${
+        JSON.stringify(options.origin)
+      }", but was "${clientData.origin}"`,
     );
   }
   // Step 10 - topOrigin is not expected so error out
