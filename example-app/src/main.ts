@@ -1,8 +1,6 @@
-/** @jsx jsx */
 import { Context, Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
 import {
   getCookie,
-  jsx,
   serveStatic,
   setCookie,
 } from "https://deno.land/x/hono@v3.5.6/middleware.ts";
@@ -26,6 +24,17 @@ import {
 import { timingSafeEqual } from "../../src/timingSafeEqual.ts";
 import { DataSource } from "./data.ts";
 import { JsonData } from "./jsonData.ts";
+import { serve } from "./server.ts";
+import {
+  assembleChallenge,
+  disassembleAndVerifyChallenge,
+} from "./challenge.ts";
+import {
+  homePageLoggedIn,
+  homePageNotLoggedIn,
+  registerPage,
+  signInPage,
+} from "./pages.tsx";
 
 const jsonConfigFile = Deno.args[0];
 if (!jsonConfigFile) {
@@ -79,67 +88,6 @@ async function deriveCSRFToken(sessionId: string): Promise<string> {
   return encodeBase64Url(new Uint8Array(signature.slice(0, 12)));
 }
 
-async function signChallenge(challenge: Uint8Array): Promise<Uint8Array> {
-  const signtature = await crypto.subtle.sign(
-    { name: "HMAC" },
-    SECRET_KEY,
-    challenge,
-  );
-  return new Uint8Array(signtature);
-}
-
-async function assembleChallenge(
-  random: Uint8Array,
-  expiration: number,
-  id: Uint8Array,
-) {
-  if (random.length != 16) {
-    throw new Error("Expected random to be 16 bytes");
-  }
-  const dataToSign = new Uint8Array(
-    16 + 8 + id.length,
-  );
-  dataToSign.set(random, 0);
-  const view = new DataView(dataToSign.buffer);
-  view.setBigUint64(random.length, BigInt(expiration));
-  dataToSign.set(id, random.length + 8);
-  const signature = await signChallenge(dataToSign);
-  const challenge = new Uint8Array(signature.length + dataToSign.length);
-  challenge.set(signature, 0);
-  challenge.set(dataToSign, signature.length);
-  return challenge;
-}
-
-async function disassembleAndVerifyChallenge(
-  challenge: Uint8Array,
-): Promise<{ userId: Uint8Array; expiration: number }> {
-  // console.log(challenge);
-  const signature = new Uint8Array(32);
-  signature.set(new Uint8Array(challenge.buffer, 0, 32), 0);
-  const dataToSign = new Uint8Array(challenge.length - 32);
-  dataToSign.set(new Uint8Array(challenge.buffer, 32));
-  const verify = await crypto.subtle.verify(
-    { name: "HMAC" },
-    SECRET_KEY,
-    signature,
-    dataToSign,
-  );
-  if (!verify) {
-    throw new Error("Could not verify challenge met expectations");
-  }
-  const view = new DataView(dataToSign.buffer, 0);
-  const expiration = view.getBigUint64(16, false);
-  if (expiration < 0 && expiration > Number.MAX_SAFE_INTEGER) {
-    throw new Error("Expiration is out of bounds");
-  }
-  const userId = new Uint8Array(12);
-  userId.set(new Uint8Array(dataToSign.buffer, 16 + 8));
-  return {
-    expiration: Number(expiration),
-    userId,
-  };
-}
-
 const app = new Hono();
 
 app.use(
@@ -177,7 +125,7 @@ app.post("/registration-options", async (c) => {
   const id = await usernameToId(username);
   const expiration = new Date().getTime() + 60_000;
   const random = crypto.getRandomValues(new Uint8Array(16));
-  const challenge = await assembleChallenge(random, expiration, id);
+  const challenge = await assembleChallenge(SECRET_KEY, random, expiration, id);
 
   const options = await generateRegistrationOptions({
     rpId: RP_ID,
@@ -225,7 +173,7 @@ app.post("/register", async (c) => {
 
   let userId: Uint8Array;
   try {
-    const result = await disassembleAndVerifyChallenge(challenge);
+    const result = await disassembleAndVerifyChallenge(SECRET_KEY, challenge);
     userId = result.userId;
     const expiration = result.expiration;
     if (new Date().getTime() > expiration) {
@@ -336,7 +284,7 @@ app.post("/authentication", async (c) => {
   const challenge = decodeBase64Url(clientDataJson.challenge);
   let userId: Uint8Array;
   try {
-    const result = await disassembleAndVerifyChallenge(challenge);
+    const result = await disassembleAndVerifyChallenge(SECRET_KEY, challenge);
     userId = result.userId;
     const expiration = result.expiration;
     if (new Date().getTime() > expiration) {
@@ -444,31 +392,6 @@ app.post("/authentication", async (c) => {
   });
 });
 
-app.get("/register", (c) => {
-  return c.html(
-    <html>
-      <body>
-        <head>
-          <link rel="stylesheet" href="/static/style.css" />
-        </head>
-        <div class="content">
-          <h1>Register</h1>
-          <label for="username">Username:</label>
-          <input type="text" id="username" />
-          <br />
-          <label for="passkey">Passkey:</label>
-          <input type="checkbox" id="passkey" />
-          <br />
-          <button id="register">Register</button>
-          <div id="status"></div>
-        </div>
-        <script type="text/javascript" src="/static/utils.js"></script>
-        <script type="text/javascript" src="/static/register.js"></script>
-      </body>
-    </html>,
-  );
-});
-
 app.post("/authentication-options", async (c) => {
   const username = c.req.query("username");
   if (!username) {
@@ -489,7 +412,7 @@ app.post("/authentication-options", async (c) => {
   const id = await usernameToId(username);
   const expiration = new Date().getTime() + 10_000;
   const random = crypto.getRandomValues(new Uint8Array(16));
-  const challenge = await assembleChallenge(random, expiration, id);
+  const challenge = await assembleChallenge(SECRET_KEY, random, expiration, id);
 
   const options = await generateAuthenticationOptions({
     allowCredentials: credentials.map((c) => ({
@@ -547,118 +470,17 @@ app.get("/", async (c) => {
   const user =
     (session && await DATA_SOURCE.findUserByUserId(session.userId)) || null;
   if (!user || !session) {
-    return c.html(
-      <html>
-        <body>
-          <head>
-            <link rel="stylesheet" href="/static/style.css" />
-          </head>
-          <div class="content">
-            <h1>WebAuthn Demo</h1>
-            <a href="/register">
-              <button>Register</button>
-            </a>
-            <br />
-            <a href="/sign-in">
-              <button>Sign In with username</button>
-            </a>
-          </div>
-        </body>
-      </html>,
-    );
+    return homePageNotLoggedIn(c);
   }
 
   const csrf = await deriveCSRFToken(session.sessionId);
-  return c.html(
-    <html>
-      <body>
-        <head>
-          <link rel="stylesheet" href="/static/style.css" />
-        </head>
-        <div class="content">
-          <h1>WebAuthn Demo</h1>
-          <p>You are logged in as {user.username}</p>
-          <form method="post" action="/sign-out">
-            <button type="submit">Sign Out</button>
-            <input type="hidden" name="csrf" value={csrf} />
-          </form>
-        </div>
-      </body>
-    </html>,
-  );
+  return homePageLoggedIn(c, csrf, user);
 });
-
 app.get("/sign-in", (c) => {
-  return c.html(
-    <html>
-      <body>
-        <head>
-          <link rel="stylesheet" href="/static/style.css" />
-        </head>
-        <div class="content">
-          <h1>Sign in</h1>
-          <label for="username">Username:</label>
-          <input type="text" id="username" />
-          <br />
-          <button id="sign-in">Sign In</button>
-          <div id="status"></div>
-        </div>
-        <script type="text/javascript" src="/static/utils.js"></script>
-        <script type="text/javascript" src="/static/sign-in.js"></script>
-      </body>
-    </html>,
-  );
+  return signInPage(c);
+});
+app.get("/register", (c) => {
+  return registerPage(c);
 });
 
-async function handle(conn: Deno.Conn) {
-  const httpConn = Deno.serveHttp(conn);
-  try {
-    for await (const requestEvent of httpConn) {
-      try {
-        const begin = new Date().getTime();
-        const response = await app.fetch(
-          requestEvent.request,
-          undefined,
-          undefined,
-        );
-        const end = new Date().getTime();
-        console.log(
-          `${requestEvent.request.method} ${requestEvent.request.url} ${
-            end - begin
-          }ms`,
-        );
-        await requestEvent.respondWith(response);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  } catch (e) {
-    console.error(e);
-  } finally {
-    try {
-      httpConn.close();
-    } catch (_e) {
-      console.warn("Could not close connection");
-    }
-  }
-}
-
-if (HTTPS_CERT && HTTPS_KEY) {
-  const server = Deno.listenTls({
-    port: PORT,
-    key: Deno.readTextFileSync(HTTPS_KEY),
-    cert: Deno.readTextFileSync(HTTPS_CERT),
-  });
-
-  for await (const conn of server) {
-    handle(conn);
-  }
-} else {
-  const server = Deno.listen({
-    port: PORT,
-  });
-
-  for await (const conn of server) {
-    handle(conn);
-  }
-}
+await serve(app, PORT, HTTPS_CERT, HTTPS_KEY);
