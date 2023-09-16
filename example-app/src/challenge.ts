@@ -1,17 +1,17 @@
+import { getSecretKey } from "./secret.ts";
+
 async function signChallenge(
-  secretKey: CryptoKey,
   challenge: Uint8Array,
 ): Promise<Uint8Array> {
   const signtature = await crypto.subtle.sign(
     { name: "HMAC" },
-    secretKey,
+    getSecretKey(),
     challenge,
   );
   return new Uint8Array(signtature);
 }
 
 export async function assembleChallenge(
-  secretKey: CryptoKey,
   random: Uint8Array,
   expiration: number,
   id: Uint8Array,
@@ -26,7 +26,7 @@ export async function assembleChallenge(
   const view = new DataView(dataToSign.buffer);
   view.setBigUint64(random.length, BigInt(expiration));
   dataToSign.set(id, random.length + 8);
-  const signature = await signChallenge(secretKey, dataToSign);
+  const signature = await signChallenge(dataToSign);
   const challenge = new Uint8Array(signature.length + dataToSign.length);
   challenge.set(signature, 0);
   challenge.set(dataToSign, signature.length);
@@ -34,7 +34,6 @@ export async function assembleChallenge(
 }
 
 export async function disassembleAndVerifyChallenge(
-  secretKey: CryptoKey,
   challenge: Uint8Array,
 ): Promise<{ userId: Uint8Array; expiration: number }> {
   // console.log(challenge);
@@ -44,7 +43,7 @@ export async function disassembleAndVerifyChallenge(
   dataToSign.set(new Uint8Array(challenge.buffer, 32));
   const verify = await crypto.subtle.verify(
     { name: "HMAC" },
-    secretKey,
+    getSecretKey(),
     signature,
     dataToSign,
   );

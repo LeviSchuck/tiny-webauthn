@@ -40,7 +40,7 @@ export interface RegistrationOptions {
 export interface RegistrationVerification {
   attestationResponse: AuthenticatorAttestationResponse;
   rpId: string;
-  origin: string[];
+  origins: string[];
   challenge: Uint8Array;
   expectUserVerification?: true;
   expectedAlgorithms?: COSEAlgorithmIdentifier[];
@@ -210,12 +210,12 @@ export async function verifyRegistrationResponse(
     throw new Error("Challenge does not match what is expected");
   }
   // Step 9 - check that the origin is expected
-  if (options.origin.length == 0) {
+  if (options.origins.length == 0) {
     throw new Error("Expected an origin from the verification function");
   }
   let originMatched = false;
   const encodedClientOrigin = ENCODER.encode(clientData.origin);
-  for (const origin of options.origin) {
+  for (const origin of options.origins) {
     if (origin.length == clientData.origin.length) {
       originMatched = timingSafeEqual(
         ENCODER.encode(origin),
@@ -229,7 +229,7 @@ export async function verifyRegistrationResponse(
   if (!originMatched) {
     throw new Error(
       `Expected origin to be one of "${
-        JSON.stringify(options.origin)
+        JSON.stringify(options.origins)
       }", but was "${clientData.origin}"`,
     );
   }

@@ -6,11 +6,11 @@ function setStatus(status) {
 
 /**
  * @param {string} username
- * @returns {string[]} credential IDs
+ * @returns {PublicKeyCredentialRequestOptions | null} credential options
  */
 async function getOptions(username) {
   const getOptionsUrl = new URL(
-    "/authentication-options",
+    "/authentication/options",
     document.location,
   );
   getOptionsUrl.searchParams.set("username", username);
@@ -25,12 +25,13 @@ async function getOptions(username) {
     } else {
       setStatus("Find Authenticators request failed");
     }
-    return [];
+    return null;
   }
   /** @type {{options: string}} */
   const json = await getOptionsResponse.json();
   if (!json.options) {
-    throw new Error("Could not begin authentication");
+    setStatus("Could not begin authentication");
+    return null;
   }
   /** @type {{PublicKeyCredentialRequestOptions}} */
   const authenticationOptions = parseWebAuthnObject(json.options);
@@ -51,7 +52,7 @@ async function sendAuthentication(username, credentialId, response) {
   };
   console.log("signature", encodeBase64Url(response.signature));
   const authenticationUrl = new URL(
-    "/authentication",
+    "/authentication/submit",
     document.location,
   );
   const authenticationRequest = new Request(authenticationUrl, {
@@ -85,33 +86,44 @@ document.querySelector("#sign-in").addEventListener("click", async () => {
     setStatus("Missing username");
     return;
   }
+
   const options = await getOptions(username);
   if (!options) {
     return;
   }
   console.log(options);
-  const credential = await navigator.credentials.get({ publicKey: options });
-  console.log(credential);
-  if (credential && credential.type == "public-key") {
-    /** @type {PublicKeyCredential} */
-    const publicKeyCredential = credential;
-    /** @type {AuthenticatorAssertionResponse} */
-    const response = publicKeyCredential.response;
-    const status = await sendAuthentication(
-      username,
-      publicKeyCredential.rawId,
-      {
-        signature: response.signature,
-        authenticatorData: response.authenticatorData,
-        attestationObject: response.attestationObject,
-        clientDataJSON: response.clientDataJSON,
-        userHandle: response.userHandle,
-      },
-    );
-    if (status) {
-      document.location = "/";
+  try {
+    const credential = await navigator.credentials.get({ publicKey: options });
+    console.log(credential);
+    if (credential && credential.type == "public-key") {
+      /** @type {PublicKeyCredential} */
+      const publicKeyCredential = credential;
+      /** @type {AuthenticatorAssertionResponse} */
+      const response = publicKeyCredential.response;
+      const status = await sendAuthentication(
+        username,
+        publicKeyCredential.rawId,
+        {
+          signature: response.signature,
+          authenticatorData: response.authenticatorData,
+          attestationObject: response.attestationObject,
+          clientDataJSON: response.clientDataJSON,
+          userHandle: response.userHandle,
+        },
+      );
+      if (status) {
+        document.location = "/";
+      }
+    } else {
+      setStatus("Failure, publicKey not found");
     }
-  } else {
-    setStatus("Failure, publicKey not found");
+  } catch (e) {
+    if (e instanceof DOMException) {
+      setStatus(e.message)
+    } else if (e instanceof Error) {
+      setStatus(e.message);
+    } else {
+      setStatus("an unknown error: " + e);
+    }
   }
 });

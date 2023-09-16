@@ -50,7 +50,7 @@ export interface AuthenticationResponse {
     userId: Uint8Array,
   ): Promise<AuthenticatingUser | null>;
   findCredential?(credentialId: Uint8Array): Promise<CredentialRecord | null>;
-  origin: string[];
+  origins: string[];
   rpId: string;
   challenge: Uint8Array;
   expectedUserVerification?: true;
@@ -223,12 +223,12 @@ export async function verifyAuthenticationResponse(
     throw new Error("Challenge does not match");
   }
   // Step 14 - Verify that clientDataJSON.origin is the expected origin
-  if (options.origin.length == 0) {
+  if (options.origins.length == 0) {
     throw new Error("Expected an origin from the verification function");
   }
   let originMatched = false;
   const encodedClientOrigin = ENCODER.encode(clientDataJSON.origin);
-  for (const origin of options.origin) {
+  for (const origin of options.origins) {
     if (origin.length == clientDataJSON.origin.length) {
       originMatched = timingSafeEqual(
         ENCODER.encode(origin),
@@ -242,7 +242,7 @@ export async function verifyAuthenticationResponse(
   if (!originMatched) {
     throw new Error(
       `Expected origin to be one of "${
-        JSON.stringify(options.origin)
+        JSON.stringify(options.origins)
       }", but was "${clientDataJSON.origin}"`,
     );
   }

@@ -10,7 +10,7 @@ function setStatus(status) {
  */
 async function getOptions(username, passkey) {
   const registrationOptionsUrl = new URL(
-    "/registration-options",
+    "/registration/options",
     document.location,
   );
   registrationOptionsUrl.searchParams.set("username", username);
@@ -55,7 +55,7 @@ async function sendRegistration(username, response) {
     response: stringifyWebAuthnObject(response),
   };
   const registrationUrl = new URL(
-    "/register",
+    "/registration/submit",
     document.location,
   );
   const registrationRequest = new Request(registrationUrl, {
@@ -92,25 +92,41 @@ document.querySelector("#register").addEventListener("click", async () => {
   /** @type {HTMLInputElement} */
   const passkeyField = document.getElementById("passkey");
   const passkey = passkeyField.checked;
-  const { options } = await getOptions(username, passkey);
-  const credential = await navigator.credentials.create({ publicKey: options });
-  console.log(credential);
-  if (credential && credential.type == "public-key") {
-    /** @type {PublicKeyCredential} */
-    const publicKeyCredential = credential;
-    /** @type {AuthenticatorAttestationResponse} */
-    const response = publicKeyCredential.response;
-    const status = await sendRegistration(
-      username,
-      {
-        attestationObject: response.attestationObject,
-        clientDataJSON: response.clientDataJSON,
-      },
-    );
-    if (status) {
-      document.location = "/";
+  const opts = await getOptions(username, passkey);
+  if (!opts) {
+    return;
+  }
+  const { options } = opts;
+  try {
+    const credential = await navigator.credentials.create({ publicKey: options });
+    console.log(credential);
+    if (credential && credential.type == "public-key") {
+      /** @type {PublicKeyCredential} */
+      const publicKeyCredential = credential;
+      /** @type {AuthenticatorAttestationResponse} */
+      const response = publicKeyCredential.response;
+      const status = await sendRegistration(
+        username,
+        {
+          attestationObject: response.attestationObject,
+          clientDataJSON: response.clientDataJSON,
+        },
+      );
+      if (status) {
+        setTimeout(() => {
+          document.location = "/";
+        }, 24);
+      }
+    } else {
+      setStatus("Failure, publicKey not found");
     }
-  } else {
-    setStatus("Failure, publicKey not found");
+  } catch (e) {
+    if (e instanceof DOMException) {
+      setStatus(e.message)
+    } else if (e instanceof Error) {
+      setStatus(e.message);
+    } else {
+      setStatus("an unknown error: " + e);
+    }
   }
 });
