@@ -49,10 +49,11 @@ async function getOptions(username, passkey) {
  * @param {AuthenticatorAssertionResponse} response
  * @returns
  */
-async function sendRegistration(username, response) {
+async function sendRegistration(username, response, transports) {
   const json = {
     username: username,
     response: stringifyWebAuthnObject(response),
+    transports,
   };
   const registrationUrl = new URL(
     "/registration/submit",
@@ -107,17 +108,19 @@ document.querySelector("#register").addEventListener("click", async () => {
       const publicKeyCredential = credential;
       /** @type {AuthenticatorAttestationResponse} */
       const response = publicKeyCredential.response;
+      const transports = publicKeyCredential.response.getTransports &&
+        publicKeyCredential.response.getTransports();
       const status = await sendRegistration(
         username,
         {
           attestationObject: response.attestationObject,
           clientDataJSON: response.clientDataJSON,
         },
+        transports,
       );
       if (status) {
-        setTimeout(() => {
-          document.location = "/";
-        }, 24);
+        setStatus("Success");
+        document.location = "/";
       }
     } else {
       setStatus("Failure, publicKey not found");

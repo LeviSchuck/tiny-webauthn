@@ -61,7 +61,13 @@ export function homePageNotLoggedIn(c: Context) {
           <a href="/sign-in">
             <button>Sign In with username</button>
           </a>
+          <br />
+          <button id="sign-in-passkey">Sign In with passkey</button>
+          <div id="status"></div>
         </div>
+        <script type="text/javascript" src="/static/utils.js"></script>
+        <script type="text/javascript" src="/static/sign-in-passkey.js">
+        </script>
       </body>
     </html>,
   );

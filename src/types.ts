@@ -10,6 +10,8 @@ export type AuthenticatorTransport =
   | "usb"
   | "nfc"
   | "ble"
+  | "smart-card"
+  | "hybrid"
   | "internal";
 export type PublicKeyCredentialType = "public-key";
 export type AuthenticatorAttachment = "platform" | "cross-platform";

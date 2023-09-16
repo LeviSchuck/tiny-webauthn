@@ -5,15 +5,14 @@ function setStatus(status) {
 }
 
 /**
- * @param {string} username
  * @returns {PublicKeyCredentialRequestOptions | null} credential options
  */
-async function getOptions(username) {
+async function getOptions() {
   const getOptionsUrl = new URL(
     "/authentication/options",
     document.location,
   );
-  getOptionsUrl.searchParams.set("username", username);
+  getOptionsUrl.searchParams.set("passkey", "true");
   const getOptionsRequest = new Request(getOptionsUrl, { method: "POST" });
   getOptionsRequest.headers.set("Accept", "application/json");
   const getOptionsResponse = await fetch(getOptionsRequest);
@@ -40,13 +39,11 @@ async function getOptions(username) {
 }
 
 /**
- * @param {string} username
  * @param {Uint8Array} credentialId
  * @param {AuthenticatorAssertionResponse} response
  */
-async function sendAuthentication(username, credentialId, response) {
+async function sendAuthentication(credentialId, response) {
   const json = {
-    username: username,
     credentialId: encodeBase64Url(credentialId),
     response: stringifyWebAuthnObject(response),
   };
@@ -78,53 +75,50 @@ async function sendAuthentication(username, credentialId, response) {
   return true;
 }
 
-document.querySelector("#sign-in").addEventListener("click", async () => {
-  setStatus("");
-  const usernameField = document.getElementById("username");
-  const username = usernameField.value;
-  if (!username || username == "") {
-    setStatus("Missing username");
-    return;
-  }
-
-  const options = await getOptions(username);
-  if (!options) {
-    return;
-  }
-  console.log(options);
-  try {
-    const credential = await navigator.credentials.get({ publicKey: options });
-    console.log(credential);
-    if (credential && credential.type == "public-key") {
-      /** @type {PublicKeyCredential} */
-      const publicKeyCredential = credential;
-      /** @type {AuthenticatorAssertionResponse} */
-      const response = publicKeyCredential.response;
-      const status = await sendAuthentication(
-        username,
-        publicKeyCredential.rawId,
-        {
-          signature: response.signature,
-          authenticatorData: response.authenticatorData,
-          attestationObject: response.attestationObject,
-          clientDataJSON: response.clientDataJSON,
-          userHandle: response.userHandle,
-        },
-      );
-      if (status) {
-        setStatus("Success");
-        document.location = "/";
+document.querySelector("#sign-in-passkey").addEventListener(
+  "click",
+  async () => {
+    setStatus("");
+    const options = await getOptions();
+    if (!options) {
+      return;
+    }
+    console.log(options);
+    try {
+      const credential = await navigator.credentials.get({
+        publicKey: options,
+      });
+      console.log(credential);
+      if (credential && credential.type == "public-key") {
+        /** @type {PublicKeyCredential} */
+        const publicKeyCredential = credential;
+        /** @type {AuthenticatorAssertionResponse} */
+        const response = publicKeyCredential.response;
+        const status = await sendAuthentication(
+          publicKeyCredential.rawId,
+          {
+            signature: response.signature,
+            authenticatorData: response.authenticatorData,
+            attestationObject: response.attestationObject,
+            clientDataJSON: response.clientDataJSON,
+            userHandle: response.userHandle,
+          },
+        );
+        if (status) {
+          setStatus("Success");
+          document.location = "/";
+        }
+      } else {
+        setStatus("Failure, publicKey not found");
       }
-    } else {
-      setStatus("Failure, publicKey not found");
+    } catch (e) {
+      if (e instanceof DOMException) {
+        setStatus(e.message);
+      } else if (e instanceof Error) {
+        setStatus(e.message);
+      } else {
+        setStatus("an unknown error: " + e);
+      }
     }
-  } catch (e) {
-    if (e instanceof DOMException) {
-      setStatus(e.message);
-    } else if (e instanceof Error) {
-      setStatus(e.message);
-    } else {
-      setStatus("an unknown error: " + e);
-    }
-  }
-});
+  },
+);

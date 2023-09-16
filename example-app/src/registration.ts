@@ -18,6 +18,7 @@ import {
 } from "../../src/register.ts";
 import {
   AuthenticatorAttestationResponse,
+  AuthenticatorTransport,
   WebAuthnCreateResponse,
 } from "../../index.ts";
 
@@ -68,7 +69,24 @@ registrationApp.post("/submit", async (c) => {
   const body = await c.req.json() as {
     username: string;
     response: string;
+    transports?: AuthenticatorTransport[];
   };
+
+  if (body.transports) {
+    for (const transport of body.transports) {
+      if (
+        transport != "ble" && transport != "hybrid" &&
+        transport != "internal" && transport != "nfc" &&
+        transport != "smart-card" && transport != "usb"
+      ) {
+        return c.json({
+          error: true,
+          message: `Unexpected transport "${transport}"`,
+        }, 400);
+      }
+    }
+  }
+
   const response = parseWebAuthnObject(
     body.response,
   ) as AuthenticatorAttestationResponse;
@@ -135,6 +153,10 @@ registrationApp.post("/submit", async (c) => {
     }, 400);
   }
 
+  const transports = body.transports;
+
+  // TODO
+
   await c.env.DATA_SOURCE.createUser({
     userId,
     username: body.username,
@@ -151,6 +173,7 @@ registrationApp.post("/submit", async (c) => {
   console.log(`credentialId: ${encodeBase64Url(verification.credentialId)}`);
   console.log(`publicKey: ${encodeBase64Url(verification.coseKey)}`);
   console.log(`signCount: ${verification.signCount}`);
+  console.log(`transports: ${transports && JSON.stringify(transports)}`);
   console.log("#" + "-".repeat(79));
 
   await c.env.DATA_SOURCE.createCredential({
@@ -159,6 +182,7 @@ registrationApp.post("/submit", async (c) => {
     signCount: verification.signCount,
     userId: userId,
     userVerified: verification.userVerified,
+    transports,
   });
 
   const sessionId = encodeBase64Url(crypto.getRandomValues(new Uint8Array(16)));

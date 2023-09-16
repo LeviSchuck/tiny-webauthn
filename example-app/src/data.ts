@@ -1,3 +1,5 @@
+import { AuthenticatorTransport } from "../../index.ts";
+
 export interface User {
   username: string;
   userId: Uint8Array;
@@ -8,6 +10,7 @@ export interface Credential {
   signCount: number;
   userVerified: boolean;
   publicKey: Uint8Array;
+  transports?: AuthenticatorTransport[];
 }
 export interface CredentialUpdate {
   signCount?: number;

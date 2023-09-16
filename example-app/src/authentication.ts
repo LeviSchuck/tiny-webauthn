@@ -2,6 +2,7 @@ import { Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
 import { AppEnv } from "./env.ts";
 import {
   AuthenticatorAssertionResponse,
+  PublicKeyCredentialDescriptor,
   WebAuthnAuthenticationResponse,
 } from "../../index.ts";
 import {
@@ -24,10 +25,11 @@ import { setCookie } from "https://deno.land/x/hono@v3.5.6/middleware.ts";
 export const authenticationApp = new Hono<AppEnv>();
 
 const DECODER = new TextDecoder();
+const ZERO_USER_ID = new Uint8Array(12);
 
 authenticationApp.post("/submit", async (c) => {
   const body = await c.req.json() as {
-    username: string;
+    username?: string;
     response: string;
     credentialId: string;
   };
@@ -40,6 +42,7 @@ authenticationApp.post("/submit", async (c) => {
       message: "Missing signature",
     }, 400);
   }
+  let passkeyUserId = false;
   const clientDataJson = JSON.parse(
     DECODER.decode(response.clientDataJSON),
   ) as { challenge: string };
@@ -55,13 +58,24 @@ authenticationApp.post("/submit", async (c) => {
         message: "Challenge expired",
       }, 400);
     }
-    const expectedUserId = await usernameToId(body.username);
-    if (!timingSafeEqual(userId, expectedUserId)) {
-      console.log(`Expected`, expectedUserId, `got`, userId);
-      return c.json({
-        error: true,
-        message: "User ID did not match the challenge",
-      }, 400);
+    if (!timingSafeEqual(ZERO_USER_ID, userId)) {
+      // Only check the expected user ID when there is one in the first place
+      if (!body.username) {
+        return c.json({
+          error: true,
+          message: "Field username is required",
+        }, 400);
+      }
+      const expectedUserId = await usernameToId(body.username);
+      if (!timingSafeEqual(userId, expectedUserId)) {
+        console.log(`Expected`, expectedUserId, `got`, userId);
+        return c.json({
+          error: true,
+          message: "User ID did not match the challenge",
+        }, 400);
+      }
+    } else {
+      passkeyUserId = true;
     }
   } catch (e) {
     return c.json({
@@ -69,14 +83,26 @@ authenticationApp.post("/submit", async (c) => {
       message: (e as Error).message,
     }, 400);
   }
-
+  let findAuthenticatingUser;
+  let findAccountByUserId;
   // The user must exist
-  const existingUser = await c.env.DATA_SOURCE.findUserByUserId(userId);
-  if (!existingUser) {
-    return c.json({
-      error: true,
-      message: "verification failed",
-    }, 400);
+  if (!passkeyUserId) {
+    const existingUser = await c.env.DATA_SOURCE.findUserByUserId(userId);
+    if (!existingUser) {
+      return c.json({
+        error: true,
+        message: "verification failed",
+      }, 400);
+    }
+    findAuthenticatingUser = () => {
+      return Promise.resolve({
+        userId: existingUser.userId,
+      });
+    };
+  } else {
+    findAccountByUserId = async (userId: Uint8Array) => {
+      return await c.env.DATA_SOURCE.findUserByUserId(userId);
+    };
   }
 
   let verification: WebAuthnAuthenticationResponse;
@@ -87,11 +113,7 @@ authenticationApp.post("/submit", async (c) => {
       challenge,
       credentialId: decodeBase64Url(body.credentialId),
       response: response,
-      findAuthenticatingUser() {
-        return Promise.resolve({
-          userId: existingUser.userId,
-        });
-      },
+      findAuthenticatingUser,
       async findCredential(credentialId: Uint8Array) {
         const credential = await c.env.DATA_SOURCE.findCredentialById(
           credentialId,
@@ -107,6 +129,7 @@ authenticationApp.post("/submit", async (c) => {
           userId: credential.userId,
         };
       },
+      findAccountByUserId,
       async updateCredential(credentalId, updates) {
         await c.env.DATA_SOURCE.updateCredential(credentalId, {
           signCount: updates.signCount,
@@ -120,6 +143,8 @@ authenticationApp.post("/submit", async (c) => {
       message: "verification failed",
     }, 400);
   }
+
+  userId = verification.authenticatingUser.userId;
 
   const sessionId = encodeBase64Url(crypto.getRandomValues(new Uint8Array(16)));
   await c.env.DATA_SOURCE.createSession({
@@ -159,38 +184,44 @@ authenticationApp.post("/submit", async (c) => {
 
 authenticationApp.post("/options", async (c) => {
   const username = c.req.query("username");
-  if (!username) {
+  const passkey = c.req.query("passkey");
+  if (!username && !passkey) {
     return c.json({
       error: true,
       message: "Missing username",
     }, 400);
   }
-  const user = await c.env.DATA_SOURCE.findUserByUsername(username);
-  if (!user) {
+  const user = username && await c.env.DATA_SOURCE.findUserByUsername(username);
+  if (username && !user) {
     return c.json({
       credentials: [],
     });
   }
 
-  const credentials = await c.env.DATA_SOURCE.findCredentialsForUserId(
+  const credentials = (user && await c.env.DATA_SOURCE.findCredentialsForUserId(
     user.userId,
-  );
+  )) || [];
 
-  const id = await usernameToId(username);
-  const expiration = new Date().getTime() + 10_000;
+  // When passkey, will use a challenge with 000000000000 as the user id
+  const id = (username && await usernameToId(username)) || ZERO_USER_ID;
+  const expiration = new Date().getTime() + 120_000;
   const random = crypto.getRandomValues(new Uint8Array(16));
   const challenge = await assembleChallenge(random, expiration, id);
 
   const options = await generateAuthenticationOptions({
-    allowCredentials: credentials.map((c) => ({
-      type: "public-key",
-      id: c.credentialId,
-    })),
+    allowCredentials: credentials.map((c) => {
+      const output: PublicKeyCredentialDescriptor = {
+        type: "public-key",
+        id: c.credentialId,
+      };
+      if (c.transports) {
+        output.transports = c.transports;
+      }
+      return output;
+    }),
     rpId: c.env.RP_ID,
     challenge,
   });
-
-  console.log(`options challenge`, challenge);
 
   return c.json({
     options: stringifyWebAuthnObject(options),

@@ -101,6 +101,7 @@ export async function generateAuthenticationOptions(
   if (typeof options.extensions == "object") {
     result.extensions = options.extensions;
   }
+  result.allowCredentials = [];
   if (options.allowCredentials) {
     for (const credential of options.allowCredentials) {
       if (credential.type != "public-key") {
@@ -113,7 +114,8 @@ export async function generateAuthenticationOptions(
         for (const transport of credential.transports) {
           if (
             transport != "usb" && transport != "ble" && transport != "nfc" &&
-            transport != "internal"
+            transport != "internal" && transport != "smart-card" &&
+            transport != "hybrid"
           ) {
             throw new Error(
               `Unexpected transport "${transport}" on allowed credential`,
@@ -121,9 +123,13 @@ export async function generateAuthenticationOptions(
           }
         }
       }
+      result.allowCredentials.push({
+        type: "public-key",
+        id: credential.id,
+        transports: credential.transports,
+      });
     }
   }
-  result.allowCredentials = options.allowCredentials || [];
 
   return Promise.resolve(result);
 }

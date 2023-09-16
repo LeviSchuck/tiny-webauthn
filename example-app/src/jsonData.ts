@@ -1,6 +1,16 @@
+import { AuthenticatorTransport } from "../../index.ts";
 import { decodeBase64Url, encodeBase64Url } from "../../src/deps.ts";
 import { Credential, CredentialUpdate, Session, User } from "./data.ts";
 import { InMemoryData } from "./inMemory.ts";
+
+type SavedCredential = {
+  id: string;
+  userId: string;
+  key: string;
+  count: number;
+  verified: boolean;
+  transports?: AuthenticatorTransport[];
+};
 
 export class JsonData extends InMemoryData {
   private loaded = false;
@@ -30,20 +40,19 @@ export class JsonData extends InMemoryData {
         const text = await Deno.readTextFile(this.path);
         const json = await JSON.parse(text);
         for (const user of json.users) {
-          console.log("importing user");
           await super.createUser({
             userId: decodeBase64Url(user.id),
             username: user.name,
           });
         }
         for (const credential of json.credentials) {
-          console.log("importing credential");
           await super.createCredential({
             userId: decodeBase64Url(credential.userId),
             credentialId: decodeBase64Url(credential.id),
             publicKey: decodeBase64Url(credential.key),
             signCount: credential.count,
             userVerified: credential.verified,
+            transports: credential.transports,
           });
         }
       }
@@ -79,13 +88,7 @@ export class JsonData extends InMemoryData {
         id: string;
         name: string;
       }[];
-      credentials: {
-        id: string;
-        userId: string;
-        key: string;
-        count: number;
-        verified: boolean;
-      }[];
+      credentials: SavedCredential[];
     } = {
       users: [],
       credentials: [],
@@ -103,13 +106,17 @@ export class JsonData extends InMemoryData {
     });
 
     for (const credential of this.credentials.values()) {
-      json.credentials.push({
+      const output: SavedCredential = {
         id: encodeBase64Url(credential.credentialId),
         userId: encodeBase64Url(credential.userId),
         key: encodeBase64Url(credential.publicKey),
         count: credential.signCount,
         verified: credential.userVerified,
-      });
+      };
+      if (credential.transports) {
+        output.transports = credential.transports;
+      }
+      json.credentials.push(output);
     }
 
     json.credentials.sort((a, b) => {

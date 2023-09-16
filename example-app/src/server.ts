@@ -68,7 +68,7 @@ export async function serve(
 ) {
   await loadSecretKey(SECRET);
   await Deno.mkdir("../scratch", { recursive: true });
-  const DATA_SOURCE: DataSource = new JsonData(
+  const DATA_SOURCE = new JsonData(
     "../scratch/data.json",
     "../scratch/sessions.json",
   );

@@ -24,7 +24,6 @@ export class InMemoryData implements DataSource {
       return Promise.resolve(null);
     }
     const user = this.users.get(userIdKey) || null;
-    console.log("Found user by username", username, user);
     return Promise.resolve(user);
   }
   createUser(user: User): Promise<void> {
@@ -37,9 +36,6 @@ export class InMemoryData implements DataSource {
     }
     this.users.set(key, user);
     this.usernameToIdIndex.set(user.username, key);
-    console.log(
-      `Created user ${user.username} with id: ${encodeBase64Url(user.userId)}`,
-    );
     return Promise.resolve();
   }
   async createCredential(credential: Credential): Promise<void> {
@@ -63,9 +59,6 @@ export class InMemoryData implements DataSource {
     }
     credentials.add(key);
     this.userCredentialIndex.set(userKey, credentials);
-    console.log(
-      `Created credential for user ${encodeBase64Url(user.userId)}: ${key}`,
-    );
   }
   findCredentialsForUserId(userId: Uint8Array): Promise<Credential[]> {
     const userKey = encodeBase64Url(userId);
@@ -103,7 +96,6 @@ export class InMemoryData implements DataSource {
   findCredentialById(credentialId: Uint8Array): Promise<Credential | null> {
     const key = encodeBase64Url(credentialId);
     const credential = this.credentials.get(key) || null;
-    console.log(`Found credential by id: ${key} ${credential && true}`);
     return Promise.resolve(credential);
   }
 
