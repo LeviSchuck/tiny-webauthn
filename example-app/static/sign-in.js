@@ -119,7 +119,7 @@ document.querySelector("#sign-in").addEventListener("click", async () => {
     }
   } catch (e) {
     if (e instanceof DOMException) {
-      setStatus(e.message)
+      setStatus(e.message);
     } else if (e instanceof Error) {
       setStatus(e.message);
     } else {

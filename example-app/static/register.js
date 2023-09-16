@@ -98,7 +98,9 @@ document.querySelector("#register").addEventListener("click", async () => {
   }
   const { options } = opts;
   try {
-    const credential = await navigator.credentials.create({ publicKey: options });
+    const credential = await navigator.credentials.create({
+      publicKey: options,
+    });
     console.log(credential);
     if (credential && credential.type == "public-key") {
       /** @type {PublicKeyCredential} */
@@ -122,7 +124,7 @@ document.querySelector("#register").addEventListener("click", async () => {
     }
   } catch (e) {
     if (e instanceof DOMException) {
-      setStatus(e.message)
+      setStatus(e.message);
     } else if (e instanceof Error) {
       setStatus(e.message);
     } else {

@@ -39,4 +39,3 @@ export async function deriveCSRFToken(sessionId: string): Promise<string> {
   );
   return encodeBase64Url(new Uint8Array(signature.slice(0, 12)));
 }
-

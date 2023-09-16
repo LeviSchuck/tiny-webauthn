@@ -1,12 +1,24 @@
 import { Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
 import { AppEnv } from "./env.ts";
-import { AuthenticatorAssertionResponse, WebAuthnAuthenticationResponse } from "../../index.ts";
-import { parseWebAuthnObject, stringifyWebAuthnObject } from "../../src/helper.ts";
+import {
+  AuthenticatorAssertionResponse,
+  WebAuthnAuthenticationResponse,
+} from "../../index.ts";
+import {
+  parseWebAuthnObject,
+  stringifyWebAuthnObject,
+} from "../../src/helper.ts";
 import { decodeBase64Url, encodeBase64Url } from "../../src/deps.ts";
-import { assembleChallenge, disassembleAndVerifyChallenge } from "./challenge.ts";
+import {
+  assembleChallenge,
+  disassembleAndVerifyChallenge,
+} from "./challenge.ts";
 import { usernameToId } from "./secret.ts";
 import { timingSafeEqual } from "../../src/timingSafeEqual.ts";
-import { generateAuthenticationOptions, verifyAuthenticationResponse } from "../../src/authentication.ts";
+import {
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} from "../../src/authentication.ts";
 import { setCookie } from "https://deno.land/x/hono@v3.5.6/middleware.ts";
 
 export const authenticationApp = new Hono<AppEnv>();
@@ -81,7 +93,9 @@ authenticationApp.post("/submit", async (c) => {
         });
       },
       async findCredential(credentialId: Uint8Array) {
-        const credential = await c.env.DATA_SOURCE.findCredentialById(credentialId);
+        const credential = await c.env.DATA_SOURCE.findCredentialById(
+          credentialId,
+        );
         if (!credential) {
           return null;
         }
@@ -136,7 +150,7 @@ authenticationApp.post("/submit", async (c) => {
   setCookie(c, "session", sessionId, {
     httpOnly: true,
     secure: c.env.RP_ID != "localhost",
-    path: '/'
+    path: "/",
   });
   return c.json({
     status: "OK",
@@ -158,7 +172,9 @@ authenticationApp.post("/options", async (c) => {
     });
   }
 
-  const credentials = await c.env.DATA_SOURCE.findCredentialsForUserId(user.userId);
+  const credentials = await c.env.DATA_SOURCE.findCredentialsForUserId(
+    user.userId,
+  );
 
   const id = await usernameToId(username);
   const expiration = new Date().getTime() + 10_000;

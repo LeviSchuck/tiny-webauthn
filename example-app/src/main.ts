@@ -1,10 +1,8 @@
-import { Context, Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
+import { Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
 import {
-  getCookie,
   serveStatic,
   setCookie,
 } from "https://deno.land/x/hono@v3.5.6/middleware.ts";
-
 
 import { timingSafeEqual } from "../../src/timingSafeEqual.ts";
 import { serve } from "./server.ts";
@@ -59,10 +57,12 @@ app.post("/sign-out", async (c) => {
 
 app.get("/", async (c) => {
   const sessionId = getSession(c);
-  const session = (sessionId && await c.env.DATA_SOURCE.findSession(sessionId)) ||
+  const session =
+    (sessionId && await c.env.DATA_SOURCE.findSession(sessionId)) ||
     null;
   const user =
-    (session && await c.env.DATA_SOURCE.findUserByUserId(session.userId)) || null;
+    (session && await c.env.DATA_SOURCE.findUserByUserId(session.userId)) ||
+    null;
   if (!user || !session) {
     return homePageNotLoggedIn(c);
   }

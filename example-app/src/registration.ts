@@ -1,13 +1,25 @@
 import { Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
 import { AppEnv } from "./env.ts";
-import { parseWebAuthnObject, stringifyWebAuthnObject } from "../../src/helper.ts";
+import {
+  parseWebAuthnObject,
+  stringifyWebAuthnObject,
+} from "../../src/helper.ts";
 import { decodeBase64Url, encodeBase64Url } from "../../src/deps.ts";
-import { assembleChallenge, disassembleAndVerifyChallenge } from "./challenge.ts";
+import {
+  assembleChallenge,
+  disassembleAndVerifyChallenge,
+} from "./challenge.ts";
 import { usernameToId } from "./secret.ts";
 import { timingSafeEqual } from "../../src/timingSafeEqual.ts";
 import { setCookie } from "https://deno.land/x/hono@v3.5.6/middleware.ts";
-import { generateRegistrationOptions, verifyRegistrationResponse } from "../../src/register.ts";
-import { AuthenticatorAttestationResponse, WebAuthnCreateResponse } from "../../index.ts";
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+} from "../../src/register.ts";
+import {
+  AuthenticatorAttestationResponse,
+  WebAuthnCreateResponse,
+} from "../../index.ts";
 
 export const registrationApp = new Hono<AppEnv>();
 
@@ -158,7 +170,7 @@ registrationApp.post("/submit", async (c) => {
   setCookie(c, "session", sessionId, {
     httpOnly: true,
     secure: c.env.RP_ID != "localhost",
-    path: '/',
+    path: "/",
   });
   return c.json({
     status: "OK",

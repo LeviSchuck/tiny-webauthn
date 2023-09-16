@@ -22,7 +22,11 @@ const HTTPS_CERT = jsonConfig.certFile || null;
 
 // This is an example app, do not use this secret
 
-async function handle(app: Hono<AppEnv>, conn: Deno.Conn, dataSource: DataSource) {
+async function handle(
+  app: Hono<AppEnv>,
+  conn: Deno.Conn,
+  dataSource: DataSource,
+) {
   const httpConn = Deno.serveHttp(conn);
   try {
     for await (const requestEvent of httpConn) {
@@ -33,7 +37,7 @@ async function handle(app: Hono<AppEnv>, conn: Deno.Conn, dataSource: DataSource
           {
             ORIGINS: ORIGINS,
             RP_ID: RP_ID,
-            DATA_SOURCE: dataSource
+            DATA_SOURCE: dataSource,
           },
           undefined,
         );
