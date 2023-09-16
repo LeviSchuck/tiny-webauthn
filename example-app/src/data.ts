@@ -14,6 +14,7 @@ export interface Credential {
 }
 export interface CredentialUpdate {
   signCount?: number;
+  userVerified?: boolean;
 }
 export interface Session {
   sessionId: string;

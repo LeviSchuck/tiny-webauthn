@@ -38,6 +38,15 @@ export interface CredentialRecord {
   attestationObject?: Uint8Array;
   attestationClientDataJSON?: Uint8Array;
   publicKey: Uint8Array;
+  backupState?: boolean;
+}
+
+export interface AuthenticatorUpdate {
+  signCount?: number;
+  userVerified?: boolean;
+  attestationObject?: Uint8Array;
+  attestationClientDataJSON?: Uint8Array;
+  backupState?: boolean;
 }
 
 export interface AuthenticationResponse {
@@ -54,12 +63,10 @@ export interface AuthenticationResponse {
   rpId: string;
   challenge: Uint8Array;
   expectedUserVerification?: true;
-  updateCredential?(credentalId: Uint8Array, updates: {
-    signCount?: number;
-    userVerified?: boolean;
-    attestationObject?: Uint8Array;
-    attestationClientDataJSON?: Uint8Array;
-  }): Promise<void>;
+  updateCredential?(
+    credentalId: Uint8Array,
+    updates: AuthenticatorUpdate,
+  ): Promise<void>;
 }
 
 export interface WebAuthnAuthenticationResponse {
@@ -323,7 +330,13 @@ export async function verifyAuthenticationResponse(
   //           If signCount > credentialRecord.signCount then it is valid
   //           If signCount <= credentialRecord.signCount then it may be cloned.
   //           In this case, then do something specific here, like erroring out.
-  //           Skipping due to complexity at this time
+
+  if (credentialRecord.signCount > 0 || authenticatorData.signCount > 0) {
+    if (authenticatorData.signCount <= credentialRecord.signCount) {
+      throw new Error("Replayed signature detected");
+    }
+  }
+
   // Step 25 - If there is an attestationObject and the RP wants to verify the
   //           attestation, then decode the attestationObject similar to
   //           registration
@@ -335,6 +348,7 @@ export async function verifyAuthenticationResponse(
   //              attestation signature
   //           5. Find the relevant trust anchors
   //           Skipping due to complexity at this time
+
   // Step 26 - Update the credential record
   //           1. Update signCount
   //           2. Update the backupState
@@ -345,7 +359,43 @@ export async function verifyAuthenticationResponse(
   //           4. If there is an attestationObject, update the
   //              credentialRecord's attestationObject and also record the
   //              clientDataJson attached to the attestation.
-  //           Skipping due to complexity at this time
+
+  if (options.updateCredential) {
+    const updates: AuthenticatorUpdate = {};
+    let needsUpdate = false;
+
+    if (authenticatorData.signCount > 0) {
+      needsUpdate = true;
+      updates.signCount = authenticatorData.signCount;
+    }
+
+    if (authenticatorData.backupState != credentialRecord.backupState) {
+      needsUpdate = true;
+      updates.backupState = authenticatorData.backupEligibility;
+    }
+
+    if (
+      credentialRecord.userVerified == false && authenticatorData.userVerified
+    ) {
+      needsUpdate = true;
+      updates.userVerified = true;
+    }
+
+    if (options.response.attestationObject) {
+      needsUpdate = true;
+      updates.attestationObject = new Uint8Array(
+        options.response.attestationObject,
+      );
+      updates.attestationClientDataJSON = new Uint8Array(
+        options.response.clientDataJSON,
+      );
+    }
+
+    if (needsUpdate) {
+      await options.updateCredential(credentialRecord.credentialId, updates);
+    }
+  }
+
   // Step 27 - If everything is good, continue (a non step)
   return {
     credentialId: credentialRecord.credentialId,

@@ -1,7 +1,8 @@
 /** @jsx jsx */
 import { Context, Hono } from "https://deno.land/x/hono@v3.5.6/mod.ts";
 import { jsx } from "https://deno.land/x/hono@v3.5.6/middleware.ts";
-import { User } from "./data.ts";
+import { Credential, User } from "./data.ts";
+import { encodeBase64Url } from "../../src/deps.ts";
 
 export function signInPage(c: Context): Response {
   return c.html(
@@ -25,7 +26,12 @@ export function signInPage(c: Context): Response {
   );
 }
 
-export function homePageLoggedIn(c: Context, csrf: string, user: User) {
+export function homePageLoggedIn(
+  c: Context,
+  csrf: string,
+  user: User,
+  credentials: Credential[],
+) {
   return c.html(
     <html>
       <body>
@@ -39,7 +45,29 @@ export function homePageLoggedIn(c: Context, csrf: string, user: User) {
             <button type="submit">Sign Out</button>
             <input type="hidden" name="csrf" value={csrf} />
           </form>
+          <button id="register-another">Register another authenticator</button>
+          {" "}
+          <label for="passkey">As Passkey:</label>
+          <input type="checkbox" id="passkey" />
+          <div id="status"></div>
+          <hr />
+          <h2>Current credentials</h2>
+          <ul>
+            {credentials.map((c) => {
+              return (
+                <li>
+                  <code>{encodeBase64Url(c.credentialId)}</code>
+                  <br /> - <strong>User Verified</strong>:{" "}
+                  {c.userVerified && "true"}, <strong>Sign Count:</strong>{" "}
+                  {c.signCount}, <strong>Transports</strong>:{" "}
+                  {JSON.stringify(c.transports)}
+                </li>
+              );
+            })}
+          </ul>
         </div>
+        <script type="text/javascript" src="/static/utils.js"></script>
+        <script type="text/javascript" src="/static/register.js"></script>
       </body>
     </html>,
   );

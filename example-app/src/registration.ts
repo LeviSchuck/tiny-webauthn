@@ -19,27 +19,65 @@ import {
 import {
   AuthenticatorAttestationResponse,
   AuthenticatorTransport,
+  PublicKeyCredentialDescriptor,
   WebAuthnCreateResponse,
 } from "../../index.ts";
+import { getSession } from "./session.ts";
 
 export const registrationApp = new Hono<AppEnv>();
 
 const DECODER = new TextDecoder();
 
 registrationApp.post("/options", async (c) => {
-  const username = c.req.query("username");
+  const sessionId = getSession(c);
+  const session =
+    (sessionId && await c.env.DATA_SOURCE.findSession(sessionId)) ||
+    null;
+  const user =
+    (session && await c.env.DATA_SOURCE.findUserByUserId(session.userId)) ||
+    null;
+  let username: string | null = null;
+
+  if (user) {
+    username = user.username;
+  } else {
+    const queryUsername = c.req.query("username");
+    if (queryUsername) {
+      username = queryUsername;
+    }
+  }
+
   if (!username) {
     return c.json({
       error: true,
       message: "Missing username",
     }, 400);
   }
+
+  const id = (user && user.userId) || await usernameToId(username);
+
   const passkey = c.req.query("passkey");
 
-  const id = await usernameToId(username);
   const expiration = new Date().getTime() + 60_000;
   const random = crypto.getRandomValues(new Uint8Array(16));
   const challenge = await assembleChallenge(random, expiration, id);
+
+  let excludeCredentials: PublicKeyCredentialDescriptor[] | undefined;
+
+  if (user) {
+    const credentials = await c.env.DATA_SOURCE.findCredentialsForUserId(
+      user.userId,
+    );
+    if (credentials.length > 0) {
+      excludeCredentials = [];
+      for (const credential of credentials) {
+        excludeCredentials.push({
+          type: "public-key",
+          id: credential.credentialId,
+        });
+      }
+    }
+  }
 
   const options = await generateRegistrationOptions({
     rpId: c.env.RP_ID,
@@ -51,6 +89,7 @@ registrationApp.post("/options", async (c) => {
     challenge,
     kind: passkey && "passkey" || "server-side",
     supportedAlgorithms: [-8, -7, -257],
+    excludeCredentials,
   });
 
   const json = {
@@ -61,13 +100,12 @@ registrationApp.post("/options", async (c) => {
       userId: encodeBase64Url(id),
     },
   };
-  console.log(json.options);
   return c.json(json);
 });
 
 registrationApp.post("/submit", async (c) => {
   const body = await c.req.json() as {
-    username: string;
+    username?: string;
     response: string;
     transports?: AuthenticatorTransport[];
   };
@@ -85,6 +123,21 @@ registrationApp.post("/submit", async (c) => {
         }, 400);
       }
     }
+  }
+
+  const sessionId = getSession(c);
+  const session =
+    (sessionId && await c.env.DATA_SOURCE.findSession(sessionId)) ||
+    null;
+  const user =
+    (session && await c.env.DATA_SOURCE.findUserByUserId(session.userId)) ||
+    null;
+
+  if (!user && !body.username) {
+    return c.json({
+      error: true,
+      message: `Missing username`,
+    }, 400);
   }
 
   const response = parseWebAuthnObject(
@@ -113,12 +166,26 @@ registrationApp.post("/submit", async (c) => {
         message: "Challenge expired",
       }, 400);
     }
-    const expectedUserId = await usernameToId(body.username);
-    if (!timingSafeEqual(userId, expectedUserId)) {
-      console.log(`Expected`, expectedUserId, `got`, userId);
+    if (user) {
+      if (!timingSafeEqual(userId, user.userId)) {
+        return c.json({
+          error: true,
+          message: "User ID did not match the challenge",
+        }, 400);
+      }
+    } else if (body.username) {
+      const expectedUserId = await usernameToId(body.username);
+      if (!timingSafeEqual(userId, expectedUserId)) {
+        return c.json({
+          error: true,
+          message: "User ID did not match the challenge",
+        }, 400);
+      }
+    } else {
+      // Unreachable
       return c.json({
         error: true,
-        message: "User ID did not match the challenge",
+        message: `Missing username`,
       }, 400);
     }
   } catch (e) {
@@ -127,13 +194,15 @@ registrationApp.post("/submit", async (c) => {
       message: (e as Error).message,
     }, 400);
   }
-  // TODO see if userID has been registered yet
-  const existingUser = await c.env.DATA_SOURCE.findUserByUserId(userId);
-  if (existingUser) {
-    return c.json({
-      error: true,
-      message: "User already registered",
-    }, 400);
+
+  if (!user) {
+    const existingUser = await c.env.DATA_SOURCE.findUserByUserId(userId);
+    if (existingUser) {
+      return c.json({
+        error: true,
+        message: "User already registered",
+      }, 400);
+    }
   }
 
   let verification: WebAuthnCreateResponse;
@@ -155,12 +224,6 @@ registrationApp.post("/submit", async (c) => {
 
   const transports = body.transports;
 
-  // TODO
-
-  await c.env.DATA_SOURCE.createUser({
-    userId,
-    username: body.username,
-  });
   console.log("# Registration");
   console.log("#" + "-".repeat(79));
   console.log(`username: ${body.username}`);
@@ -176,6 +239,29 @@ registrationApp.post("/submit", async (c) => {
   console.log(`transports: ${transports && JSON.stringify(transports)}`);
   console.log("#" + "-".repeat(79));
 
+  // Step 26 - verify that the credentialId is not associated for any user
+  // Also known as step 22 in https://www.w3.org/TR/webauthn-3/
+
+  const existingCredential = await c.env.DATA_SOURCE.findCredentialById(
+    verification.credentialId,
+  );
+  if (existingCredential) {
+    return c.json({
+      error: true,
+      message: "Credential is already registered",
+    }, 400);
+  }
+
+  // Step 27 - Create and store a new credential record on the user account
+  // Also known as step 23 in https://www.w3.org/TR/webauthn-3/
+
+  if (!user && body.username) {
+    await c.env.DATA_SOURCE.createUser({
+      userId,
+      username: body.username,
+    });
+  }
+
   await c.env.DATA_SOURCE.createCredential({
     credentialId: verification.credentialId,
     publicKey: verification.coseKey,
@@ -185,17 +271,22 @@ registrationApp.post("/submit", async (c) => {
     transports,
   });
 
-  const sessionId = encodeBase64Url(crypto.getRandomValues(new Uint8Array(16)));
-  await c.env.DATA_SOURCE.createSession({
-    sessionId,
-    userId,
-  });
+  if (!user) {
+    const sessionId = encodeBase64Url(
+      crypto.getRandomValues(new Uint8Array(16)),
+    );
+    await c.env.DATA_SOURCE.createSession({
+      sessionId,
+      userId,
+    });
 
-  setCookie(c, "session", sessionId, {
-    httpOnly: true,
-    secure: c.env.RP_ID != "localhost",
-    path: "/",
-  });
+    setCookie(c, "session", sessionId, {
+      httpOnly: true,
+      secure: c.env.RP_ID != "localhost",
+      path: "/",
+    });
+  }
+
   return c.json({
     status: "OK",
   });

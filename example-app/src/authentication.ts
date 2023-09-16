@@ -131,8 +131,10 @@ authenticationApp.post("/submit", async (c) => {
       },
       findAccountByUserId,
       async updateCredential(credentalId, updates) {
+        console.log("Update credential", updates);
         await c.env.DATA_SOURCE.updateCredential(credentalId, {
           signCount: updates.signCount,
+          userVerified: updates.userVerified,
         });
       },
     });
@@ -191,6 +193,7 @@ authenticationApp.post("/options", async (c) => {
       message: "Missing username",
     }, 400);
   }
+
   const user = username && await c.env.DATA_SOURCE.findUserByUsername(username);
   if (username && !user) {
     return c.json({

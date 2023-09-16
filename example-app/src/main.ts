@@ -68,7 +68,12 @@ app.get("/", async (c) => {
   }
 
   const csrf = await deriveCSRFToken(session.sessionId);
-  return homePageLoggedIn(c, csrf, user);
+
+  const credentials = await c.env.DATA_SOURCE.findCredentialsForUserId(
+    user.userId,
+  );
+
+  return homePageLoggedIn(c, csrf, user, credentials);
 });
 app.get("/sign-in", (c) => {
   return signInPage(c);

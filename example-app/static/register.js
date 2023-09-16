@@ -4,7 +4,7 @@ function setStatus(status) {
 }
 
 /**
- * @param {string} username
+ * @param {string | null} username
  * @param {boolean} passkey
  * @returns {{options: PublicKeyCredentialCreationOptions, authenticatingData: {challenge: string}}}
  */
@@ -13,7 +13,9 @@ async function getOptions(username, passkey) {
     "/registration/options",
     document.location,
   );
-  registrationOptionsUrl.searchParams.set("username", username);
+  if (username && username.length > 0) {
+    registrationOptionsUrl.searchParams.set("username", username);
+  }
   if (passkey) {
     registrationOptionsUrl.searchParams.set("passkey", true);
   }
@@ -82,56 +84,93 @@ async function sendRegistration(username, response, transports) {
   return true;
 }
 
-document.querySelector("#register").addEventListener("click", async () => {
-  setStatus("");
-  const usernameField = document.getElementById("username");
-  const username = usernameField.value;
-  if (!username || username == "") {
-    setStatus("Missing username");
-    return;
+/**
+ * @param {PublicKeyCredentialCreationOptions} options
+ */
+async function completeRegistration(username, options) {
+  const credential = await navigator.credentials.create({
+    publicKey: options,
+  });
+  console.log(credential);
+  if (credential && credential.type == "public-key") {
+    /** @type {PublicKeyCredential} */
+    const publicKeyCredential = credential;
+    /** @type {AuthenticatorAttestationResponse} */
+    const response = publicKeyCredential.response;
+    const transports = publicKeyCredential.response.getTransports &&
+      publicKeyCredential.response.getTransports();
+    const status = await sendRegistration(
+      username,
+      {
+        attestationObject: response.attestationObject,
+        clientDataJSON: response.clientDataJSON,
+      },
+      transports,
+    );
+    if (status) {
+      setStatus("Success");
+      document.location = "/";
+    }
+  } else {
+    setStatus("Failure, publicKey not found");
   }
-  /** @type {HTMLInputElement} */
-  const passkeyField = document.getElementById("passkey");
-  const passkey = passkeyField.checked;
-  const opts = await getOptions(username, passkey);
-  if (!opts) {
-    return;
-  }
-  const { options } = opts;
-  try {
-    const credential = await navigator.credentials.create({
-      publicKey: options,
-    });
-    console.log(credential);
-    if (credential && credential.type == "public-key") {
-      /** @type {PublicKeyCredential} */
-      const publicKeyCredential = credential;
-      /** @type {AuthenticatorAttestationResponse} */
-      const response = publicKeyCredential.response;
-      const transports = publicKeyCredential.response.getTransports &&
-        publicKeyCredential.response.getTransports();
-      const status = await sendRegistration(
-        username,
-        {
-          attestationObject: response.attestationObject,
-          clientDataJSON: response.clientDataJSON,
-        },
-        transports,
-      );
-      if (status) {
-        setStatus("Success");
-        document.location = "/";
+}
+
+const registerButton = document.querySelector("#register");
+if (registerButton) {
+  registerButton.addEventListener("click", async () => {
+    setStatus("");
+    const usernameField = document.getElementById("username");
+    const username = usernameField.value;
+    if (!username || username == "") {
+      setStatus("Missing username");
+      return;
+    }
+    /** @type {HTMLInputElement} */
+    const passkeyField = document.getElementById("passkey");
+    const passkey = passkeyField.checked;
+    const opts = await getOptions(username, passkey);
+    if (!opts) {
+      return;
+    }
+    const { options } = opts;
+    try {
+      await completeRegistration(username, options);
+    } catch (e) {
+      if (e instanceof DOMException) {
+        setStatus(e.message);
+      } else if (e instanceof Error) {
+        setStatus(e.message);
+      } else {
+        setStatus("an unknown error: " + e);
       }
-    } else {
-      setStatus("Failure, publicKey not found");
     }
-  } catch (e) {
-    if (e instanceof DOMException) {
-      setStatus(e.message);
-    } else if (e instanceof Error) {
-      setStatus(e.message);
-    } else {
-      setStatus("an unknown error: " + e);
+  });
+}
+
+const registerAnotherButton = document.querySelector("#register-another");
+if (registerAnotherButton) {
+  registerAnotherButton.addEventListener("click", async () => {
+    setStatus("");
+    /** @type {HTMLInputElement} */
+    const passkeyField = document.getElementById("passkey");
+    const passkey = passkeyField.checked;
+    const opts = await getOptions(null, passkey);
+    if (!opts) {
+      return;
     }
-  }
-});
+    const { options } = opts;
+    try {
+      await completeRegistration(undefined, options);
+    } catch (e) {
+      if (e instanceof DOMException) {
+        setStatus(e.message);
+      } else if (e instanceof Error) {
+        setStatus(e.message);
+      } else {
+        setStatus("an unknown error: " + e);
+      }
+      console.error(e);
+    }
+  });
+}
