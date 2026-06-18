@@ -336,7 +336,11 @@ export async function verifyRegistrationResponse(
 
   // Step 22 - Verify attestation statement
   // Also known as step 19 in https://www.w3.org/TR/webauthn-3/
-  const verified = verifier.verify(createResponse, new Uint8Array(hash), key);
+  const verified = await verifier.verify(
+    createResponse,
+    new Uint8Array(hash),
+    key,
+  );
 
   if (!verified) {
     throw new Error("Could not verify none attestation");

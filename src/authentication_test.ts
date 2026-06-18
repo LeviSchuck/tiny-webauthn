@@ -1,13 +1,19 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
-import { decodeBase64Url } from "./deps.ts";
+import { decodeBase64Url, encodeBase64Url } from "./deps.ts";
 import { timingSafeEqual } from "./timingSafeEqual.ts";
 import {
   type AuthenticatingUser,
+  type AuthenticationResponse,
   type CredentialRecord,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from "./authentication.ts";
+import type {
+  AuthenticatorAssertionResponse,
+  AuthenticatorTransport,
+  WebAuthnBuffer,
+} from "./types.ts";
 
 const CREDENTIAL_ID = decodeBase64Url("OUf0LGAmowUoH8OnTklJAQ");
 const RSA_CREDENTIAL_ID = decodeBase64Url(
@@ -30,6 +36,55 @@ const RSA_CHALLENGE = decodeBase64Url(
 const USER_ID = decodeBase64Url("VGFjbw");
 const ECDSA_USER_ID = decodeBase64Url("kxVi3QLMnDIAwBRL");
 const RSA_USER_ID = decodeBase64Url("qEfw9FQgnjdScczd");
+const ENCODER = new TextEncoder();
+
+function ed25519Response(): AuthenticatorAssertionResponse {
+  return {
+    userHandle: USER_ID.buffer,
+    authenticatorData:
+      decodeBase64Url("GX3XEkLc5hSbg4PrSibs8QePOaZxVoZYVHuCR7T-AgkFAAAABA")
+        .buffer,
+    clientDataJSON: decodeBase64Url(
+      "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVkRTT3BYUXJoamoyWGtNT0g3NDJjQlFXaGtlaXdzcldBY05Ob1c5dHM0OCIsIm9yaWdpbiI6Imh0dHBzOi8vbGV2aXNjaHVjay5jb20iLCJjcm9zc09yaWdpbiI6ZmFsc2UsIm90aGVyX2tleXNfY2FuX2JlX2FkZGVkX2hlcmUiOiJkbyBub3QgY29tcGFyZSBjbGllbnREYXRhSlNPTiBhZ2FpbnN0IGEgdGVtcGxhdGUuIFNlZSBodHRwczovL2dvby5nbC95YWJQZXgifQ",
+    ).buffer,
+    signature: decodeBase64Url(
+      "V5YJBn-Bd6-hxp7Yf6u8sxP3orgcE3pcnL5SoaJaSxuqcnkDC2qgc1XUrG320o91bdbQBuVsp6LyUCHBhfFMDg",
+    ).buffer,
+  };
+}
+
+function clientData(
+  overrides: Record<string, unknown>,
+): ArrayBuffer {
+  return ENCODER.encode(JSON.stringify({
+    type: "webauthn.get",
+    challenge: encodeBase64Url(CHALLENGE2),
+    origin: "https://levischuck.com",
+    crossOrigin: false,
+    ...overrides,
+  })).buffer;
+}
+
+function toBytes(data: WebAuthnBuffer): Uint8Array {
+  return data instanceof Uint8Array
+    ? data
+    : new Uint8Array(data as ArrayBuffer);
+}
+
+function ed25519Verification(
+  overrides: Partial<AuthenticationResponse> = {},
+): AuthenticationResponse {
+  return {
+    challenge: CHALLENGE2,
+    credentialId: CREDENTIAL_ID,
+    origins: ["https://levischuck.com"],
+    rpId: "levischuck.com",
+    response: ed25519Response(),
+    findAccountByUserId,
+    findCredential,
+    ...overrides,
+  };
+}
 
 // deno-lint-ignore require-await
 async function findCredential(
@@ -105,6 +160,73 @@ describe("Authentication", () => {
     assert(timingSafeEqual(CHALLENGE2, options.challenge));
     assertEquals(options.rpId, "levischuck.com");
     assertEquals(options.allowCredentials, []);
+  });
+
+  it("Can generate verification options with optional fields", async () => {
+    const allowCredential = {
+      type: "public-key" as const,
+      id: CREDENTIAL_ID,
+      transports: [
+        "usb",
+        "ble",
+        "nfc",
+        "internal",
+        "smart-card",
+        "hybrid",
+      ] as AuthenticatorTransport[],
+    };
+    const options = await generateAuthenticationOptions({
+      rpId: "levischuck.com",
+      challenge: CHALLENGE2,
+      timeoutMillis: 1200,
+      userVerification: "required",
+      extensions: { appid: "https://levischuck.com" },
+      allowCredentials: [allowCredential],
+    });
+
+    assertEquals(options.timeout, 1200);
+    assertEquals(options.userVerification, "required");
+    assertEquals(options.extensions, { appid: "https://levischuck.com" });
+    assertEquals(options.allowCredentials, [allowCredential]);
+  });
+
+  it("Rejects malformed authentication options", async () => {
+    await assertRejects(
+      () => generateAuthenticationOptions({ challenge: new Uint8Array(15) }),
+      Error,
+      "Insufficient challenge size",
+    );
+    await assertRejects(
+      () =>
+        generateAuthenticationOptions({
+          allowCredentials: [{ type: "password" as never, id: CREDENTIAL_ID }],
+        }),
+      Error,
+      'Expected "public-key"',
+    );
+    await assertRejects(
+      () =>
+        generateAuthenticationOptions({
+          allowCredentials: [{
+            type: "public-key",
+            id: CREDENTIAL_ID.buffer as never,
+          }],
+        }),
+      Error,
+      "Expected credential id",
+    );
+    await assertRejects(
+      () =>
+        generateAuthenticationOptions({
+          allowCredentials: [{
+            type: "public-key",
+            id: CREDENTIAL_ID,
+            transports: ["serial" as never],
+          }],
+        }),
+      Error,
+      'Unexpected transport "serial"',
+    );
   });
 
   it("Can verify an Ed25519 authentication with pre-known user", async () => {
@@ -220,5 +342,222 @@ describe("Authentication", () => {
     assertEquals(verified.userVerified, true);
     assertEquals(verified.backupState, false);
     assertEquals(verified.multiDevice, false);
+  });
+
+  it("Rejects authentication responses before credential lookup", async () => {
+    await verifyAuthenticationResponse(ed25519Verification({
+      allowCredentials: [new Uint8Array([1, 2, 3]), CREDENTIAL_ID],
+    }));
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          allowCredentials: [new Uint8Array([1, 2, 3])],
+        })),
+      Error,
+      "is not allowed",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          findCredential: () => Promise.resolve(null),
+        })),
+      Error,
+      "Credential not found",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          findAuthenticatingUser: () =>
+            Promise.resolve({ userId: new Uint8Array([1]) }),
+        })),
+      Error,
+      "Credential does not match user",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          response: { ...ed25519Response(), userHandle: undefined },
+          findAccountByUserId: undefined,
+        })),
+      Error,
+      "Could not find user",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          findAccountByUserId: () => Promise.resolve(null),
+        })),
+      Error,
+      "Could not find user",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          findCredential: async (id) => ({
+            ...(await findCredential(id))!,
+            userId: new Uint8Array([1]),
+          }),
+        })),
+      Error,
+      "Credential does not match user",
+    );
+  });
+
+  it("Rejects malformed authentication client data", async () => {
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          response: {
+            ...ed25519Response(),
+            clientDataJSON: clientData({ type: "webauthn.create" }),
+          },
+        })),
+      Error,
+      "Unexpected webauthn client json type",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          challenge: new Uint8Array(CHALLENGE2.length),
+        })),
+      Error,
+      "Challenge does not match",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          origins: [],
+        })),
+      Error,
+      "Expected an origin",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          origins: ["https://example.com"],
+        })),
+      Error,
+      "Expected origin",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          response: {
+            ...ed25519Response(),
+            clientDataJSON: clientData({ topOrigin: "https://top.example" }),
+          },
+        })),
+      Error,
+      "topOrigin is not supported",
+    );
+  });
+
+  it("Rejects invalid authenticator data and signatures", async () => {
+    const noUserPresence = toBytes(ed25519Response().authenticatorData);
+    noUserPresence[32] = 0x04;
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          response: {
+            ...ed25519Response(),
+            authenticatorData: noUserPresence.buffer,
+          },
+        })),
+      Error,
+      "Expected user presence",
+    );
+
+    const noUserVerification = toBytes(ed25519Response().authenticatorData);
+    noUserVerification[32] = 0x01;
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          expectedUserVerification: true,
+          response: {
+            ...ed25519Response(),
+            authenticatorData: noUserVerification.buffer,
+          },
+        })),
+      Error,
+      "Expected user verified",
+    );
+
+    const backupStateWithoutEligibility = toBytes(
+      ed25519Response().authenticatorData,
+    );
+    backupStateWithoutEligibility[32] = 0x11;
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          response: {
+            ...ed25519Response(),
+            authenticatorData: backupStateWithoutEligibility.buffer,
+          },
+        })),
+      Error,
+      "Backup eligibility",
+    );
+
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          rpId: "example.com",
+        })),
+      Error,
+      "Relying Party ID mismatch",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          response: {
+            ...ed25519Response(),
+            signature: new Uint8Array(64).buffer,
+          },
+        })),
+      Error,
+      "Signature failed",
+    );
+    await assertRejects(
+      () =>
+        verifyAuthenticationResponse(ed25519Verification({
+          findCredential: async (id) => ({
+            ...(await findCredential(id))!,
+            signCount: 4,
+          }),
+        })),
+      Error,
+      "Replayed signature detected",
+    );
+  });
+
+  it("Updates credential state after successful authentication", async () => {
+    let updatedId: Uint8Array | undefined;
+    let updates: unknown;
+    const attestationObject = new Uint8Array([1, 2, 3]);
+
+    await verifyAuthenticationResponse(ed25519Verification({
+      response: { ...ed25519Response(), attestationObject },
+      findCredential: async (id) => ({
+        ...(await findCredential(id))!,
+        backupState: true,
+        userVerified: false,
+      }),
+      updateCredential: (id, next) => {
+        updatedId = id;
+        updates = next;
+        return Promise.resolve();
+      },
+    }));
+
+    assertEquals(updatedId, CREDENTIAL_ID);
+    assertEquals(updates, {
+      signCount: 4,
+      backupState: false,
+      userVerified: true,
+      attestationObject,
+      attestationClientDataJSON: toBytes(
+        ed25519Response().clientDataJSON,
+      ),
+    });
   });
 });
