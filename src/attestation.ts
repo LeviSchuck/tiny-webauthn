@@ -1,4 +1,4 @@
-import { CreateAuthenticatorResponse } from "./types.ts";
+import type { CreateAuthenticatorResponse } from "./types.ts";
 import { verifySignature } from "./verifier.ts";
 
 export interface AttestationVerifier {

@@ -1,16 +1,13 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.195.0/assert/mod.ts";
-import { describe, it } from "https://deno.land/std@0.195.0/testing/bdd.ts";
+import { assert, assertEquals } from "@std/assert";
+import { timingSafeEqual } from "@std/crypto/timing-safe-equal";
+import { describe, it } from "@std/testing/bdd";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
 } from "./register.ts";
 import { ECDSA_SHA_256, EDDSA, RSASSA_PKCS1_v1_5_SHA_256 } from "./deps.ts";
 import { decodeBase64Url } from "./deps.ts";
-import { timingSafeEqual } from "https://deno.land/std@0.160.0/crypto/timing_safe_equal.ts";
-import { AuthenticatorAttestationResponse } from "./types.ts";
+import type { AuthenticatorAttestationResponse } from "./types.ts";
 
 const ENCODER = new TextEncoder();
 
@@ -63,7 +60,7 @@ describe("Registration", () => {
         attestationObject: decodeBase64Url(
           "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVh_GX3XEkLc5hSbg4PrSibs8QePOaZxVoZYVHuCR7T-AgnFAAAAAQAAAAAAAAAAAAAAAAAAAAAAEDlH9CxgJqMFKB_Dp05JSQGkAQEDJyAGIVggcBgGHdrhFKK69xI3rUwgvNY3fI9Nscgmgx4YNeqor8uha2NyZWRQcm90ZWN0Ag",
         ),
-      } as AuthenticatorAttestationResponse,
+      } satisfies AuthenticatorAttestationResponse,
     };
     const verified = await verifyRegistrationResponse({
       attestationResponse: credential.response,
@@ -101,7 +98,7 @@ describe("Registration", () => {
         attestationObject: decodeBase64Url(
           "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVkBZ7po2_gzuGLPA_PQd9-sekRt6_C7l4Qtb0QQBXAKCoTYRQAAAAAAAAAAAAAAAAAAAAAAAAAAACBpl-FFx6Mg-3Qa0EBhsELdKmFPH956CHlL5RfgjoOaYaQBAwM5AQAgWQEAmsNFll9haOt01PH8RVQoipMhe9m0xXM_MPSPGoq8QYrn9yuDjOw4qVnx5B8ScuML4hlw6xfvuyN-FhZ9IEAWFmbLCafLks7-LXkdFu35YbP1TGbkepAVRp3H-aRYfLA9Dt6hxeJ6Z3G83m7asjGk4Vw62LNRa6aprGJ7N90hL7bsMHNOflYpTKNaTRSaqqlydm_L1jXns5yb0-86GnvrXTMlBD2wnbrODdaxzidHFf0KhNP_yPAJDe5Tt9jVez9-mRRxMNAm0Lonivlvv1RshubvKVCxKQfnd_CVoEP04-2ZT0uG7J7aE4t0ucxqf6hJxbWQ_WCd3Inh1Z8GY1r6tyFDAQAB",
         ),
-      } as AuthenticatorAttestationResponse,
+      } satisfies AuthenticatorAttestationResponse,
     };
     const verified = await verifyRegistrationResponse({
       attestationResponse: credential.response,
@@ -142,7 +139,7 @@ describe("Registration", () => {
         attestationObject: decodeBase64Url(
           "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVjESZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NFAAAAAQAAAAAAAAAAAAAAAAAAAAAAQGDoJkaReT53GNIULUlRCgKh_d0VlBypv06t6iSd3SMgdKsIQTAN-C8W4J2iMmUDFldSepHhV5WC1-pT7bA9JDmlAQIDJiABIVgg4eN_jI9illg8tP7AifxoOvLa210adyfdl0bPa3bITukiWCBe8he-x7LF68x9aduIAfurpro_4VMzki7r_LVIjfdE-A",
         ),
-      } as AuthenticatorAttestationResponse,
+      } satisfies AuthenticatorAttestationResponse,
     };
     const verified = await verifyRegistrationResponse({
       attestationResponse: credential.response,

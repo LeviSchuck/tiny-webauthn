@@ -1,5 +1,5 @@
 import { decodeBase64, encodeBase64 } from "./deps.ts";
-import {
+import type {
   AuthenticatorAttestationResponse,
   PublicKeyCredentialCreationOptions,
   PublicKeyCredentialRequestOptions,

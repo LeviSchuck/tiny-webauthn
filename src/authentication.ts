@@ -1,12 +1,13 @@
 import { timingSafeEqual } from "./timingSafeEqual.ts";
-import {
+import type {
   AuthenticatorAssertionResponse,
   PublicKeyCredentialDescriptor,
   PublicKeyCredentialRequestOptions,
   UserVerificationRequirement,
+  WebAuthnBuffer,
 } from "./types.ts";
 import {
-  CBORType,
+  type CBORType,
   decodeBase64Url,
   decodeCBOR,
   encodeBase64Url,
@@ -90,7 +91,7 @@ interface WebAuthnGetData {
 export async function generateAuthenticationOptions(
   options: AuthenticationOptions,
 ): Promise<PublicKeyCredentialRequestOptions> {
-  let challenge = crypto.getRandomValues(new Uint8Array(32));
+  let challenge: Uint8Array = crypto.getRandomValues(new Uint8Array(32));
   if (options.challenge) {
     challenge = options.challenge;
     if (challenge.length < 16) {
@@ -202,7 +203,7 @@ export async function verifyAuthenticationResponse(
       throw new Error("Could not find user");
     }
     authenticatingUser = await options.findAccountByUserId(
-      new Uint8Array(options.response.userHandle),
+      toUint8Array(options.response.userHandle),
     );
     if (!authenticatingUser) {
       throw new Error("Could not find user");
@@ -213,7 +214,7 @@ export async function verifyAuthenticationResponse(
   }
   // Step 9  - collect clientDataJSON, authenticatorData, and signature
   const authenticatorData = parseAuthenticatorData(
-    options.response.authenticatorData,
+    toUint8Array(options.response.authenticatorData).buffer,
   );
   const signature = options.response.signature;
   // Step 10 - Decode clientDataJSON from bytes to text
@@ -300,7 +301,7 @@ export async function verifyAuthenticationResponse(
   // Step 22 - hash is SHA256(clientDataJSON)
   const hash = await crypto.subtle.digest(
     { name: "SHA-256" },
-    options.response.clientDataJSON,
+    toBufferSource(options.response.clientDataJSON),
   );
   // Step 23 - Load the publicKey from the credential record,
   //           dataToSign = authData || hash
@@ -311,16 +312,19 @@ export async function verifyAuthenticationResponse(
   const dataToVerify = new Uint8Array(
     options.response.authenticatorData.byteLength + hash.byteLength,
   );
-  dataToVerify.set(new Uint8Array(options.response.authenticatorData), 0);
+  const authenticatorDataBytes = toUint8Array(
+    options.response.authenticatorData,
+  );
+  dataToVerify.set(authenticatorDataBytes, 0);
   dataToVerify.set(
     new Uint8Array(hash),
-    options.response.authenticatorData.byteLength,
+    authenticatorDataBytes.byteLength,
   );
   if (
     !await verifySignature(
       coseKey.alg,
       key,
-      new Uint8Array(signature),
+      toUint8Array(signature),
       dataToVerify,
     )
   ) {
@@ -383,10 +387,10 @@ export async function verifyAuthenticationResponse(
 
     if (options.response.attestationObject) {
       needsUpdate = true;
-      updates.attestationObject = new Uint8Array(
+      updates.attestationObject = toUint8Array(
         options.response.attestationObject,
       );
-      updates.attestationClientDataJSON = new Uint8Array(
+      updates.attestationClientDataJSON = toUint8Array(
         options.response.clientDataJSON,
       );
     }
@@ -406,4 +410,14 @@ export async function verifyAuthenticationResponse(
     signCount: authenticatorData.signCount,
     extensions: authenticatorData.extensions,
   };
+}
+
+function toUint8Array(data: WebAuthnBuffer): Uint8Array {
+  return data instanceof Uint8Array
+    ? data
+    : new Uint8Array(data as ArrayBuffer);
+}
+
+function toBufferSource(data: WebAuthnBuffer): BufferSource {
+  return Uint8Array.from(toUint8Array(data));
 }

@@ -1,5 +1,7 @@
-import { CBORType, COSEKeyAll } from "./deps.ts";
+import type { CBORType, COSEKeyAll } from "./deps.ts";
 // https://www.w3.org/TR/webauthn-2/#dictdef-publickeycredentialcreationoptions
+
+export type WebAuthnBuffer = ArrayBufferLike | Uint8Array;
 
 export type COSEAlgorithmIdentifier = -7 | -257 | -8;
 export type UserVerificationRequirement =
@@ -78,19 +80,19 @@ export interface PublicKeyCredentialCreationOptions {
   extensions?: object;
 }
 export interface AuthenticatorResponse {
-  readonly clientDataJSON: ArrayBuffer;
+  readonly clientDataJSON: WebAuthnBuffer;
 }
 export interface AuthenticatorAttestationResponse
   extends AuthenticatorResponse {
-  attestationObject: ArrayBuffer;
+  attestationObject: WebAuthnBuffer;
 }
 
 export interface AuthenticatorAssertionResponse extends AuthenticatorResponse {
-  attestationObject?: ArrayBuffer;
-  authenticatorData: ArrayBuffer;
-  signature: ArrayBuffer;
-  clientDataJSON: ArrayBuffer;
-  userHandle?: ArrayBuffer;
+  attestationObject?: WebAuthnBuffer;
+  authenticatorData: WebAuthnBuffer;
+  signature: WebAuthnBuffer;
+  clientDataJSON: WebAuthnBuffer;
+  userHandle?: WebAuthnBuffer;
 }
 
 export interface AttestedCredentialData {
@@ -149,7 +151,7 @@ export interface Credential {
 export interface PublicKeyCredential<resp extends AuthenticatorResponse>
   extends Credential {
   readonly type: "public-key";
-  readonly rawId: ArrayBuffer;
+  readonly rawId: WebAuthnBuffer;
   readonly response: resp;
   readonly authenticatorAttachment: AuthenticatorAttachment;
 }

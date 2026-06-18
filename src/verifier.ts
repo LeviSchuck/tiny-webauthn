@@ -1,6 +1,6 @@
 import {
-  ALG_ALL,
-  ECDSA_ALG,
+  type ALG_ALL,
+  type ECDSA_ALG,
   ECDSA_SHA_256,
   EDDSA,
   RSASSA_PKCS1_v1_5_SHA_256,
@@ -27,7 +27,7 @@ function decodeAsn1Integer(view: DataView, offset: number): [number, number] {
 export function unwrapAsn1EC2Signature(
   sig: Uint8Array,
   alg: ECDSA_ALG,
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const size = 32;
   // Vary size depending on algorithm
   if (alg != ECDSA_SHA_256) {
@@ -94,28 +94,30 @@ export async function verifySignature(
   sig: Uint8Array,
   signedData: Uint8Array,
 ): Promise<boolean> {
+  const signature = Uint8Array.from(sig);
+  const data = Uint8Array.from(signedData);
   if (
     alg == RSASSA_PKCS1_v1_5_SHA_256
   ) {
     return await crypto.subtle.verify(
       { name: "RSASSA-PKCS1-v1_5" },
       key,
-      sig,
-      signedData,
+      signature,
+      data,
     );
   } else if (alg == ECDSA_SHA_256) {
     return await crypto.subtle.verify(
       { name: "ECDSA", hash: { name: "SHA-256" } },
       key,
-      unwrapAsn1EC2Signature(sig, alg),
-      signedData,
+      unwrapAsn1EC2Signature(signature, alg),
+      data,
     );
   } else if (alg == EDDSA) {
     return await crypto.subtle.verify(
       { name: "Ed25519" },
       key,
-      sig,
-      signedData,
+      signature,
+      data,
     );
   }
   return false;

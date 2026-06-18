@@ -1,12 +1,13 @@
-import {
+import type {
   AuthenticatorAttestationResponse,
   COSEAlgorithmIdentifier,
   CreateAuthenticatorResponse,
   PublicKeyCredentialCreationOptions,
   PublicKeyCredentialDescriptor,
+  WebAuthnBuffer,
 } from "./types.ts";
 import {
-  CBORType,
+  type CBORType,
   decodeBase64Url,
   decodeCBOR,
   ECDSA_SHA_256,
@@ -16,7 +17,7 @@ import {
 } from "./deps.ts";
 import { timingSafeEqual } from "./timingSafeEqual.ts";
 import {
-  AttestationVerifier,
+  type AttestationVerifier,
   NoneAttestationVerifier,
   PackedAttestationVerifier,
 } from "./attestation.ts";
@@ -70,7 +71,7 @@ export interface WebAuthnCreateResponse {
 export async function generateRegistrationOptions(
   options: RegistrationOptions,
 ): Promise<PublicKeyCredentialCreationOptions> {
-  let challenge = crypto.getRandomValues(new Uint8Array(32));
+  let challenge: Uint8Array = crypto.getRandomValues(new Uint8Array(32));
   if (options.challenge) {
     challenge = options.challenge;
     if (challenge.length < 16) {
@@ -149,9 +150,9 @@ export async function generateRegistrationOptions(
 }
 
 export function parseCreateResponse(
-  data: ArrayBuffer,
+  data: WebAuthnBuffer,
 ): CreateAuthenticatorResponse {
-  const cbor = decodeCBOR(data);
+  const cbor = decodeCBOR(toUint8Array(data));
   if (!(cbor instanceof Map)) {
     throw new Error("Malformed create response");
   }
@@ -168,6 +169,16 @@ export function parseCreateResponse(
     authData: parsedAuthData,
     authDataBytes: authData,
   };
+}
+
+function toUint8Array(data: WebAuthnBuffer): Uint8Array {
+  return data instanceof Uint8Array
+    ? data
+    : new Uint8Array(data as ArrayBuffer);
+}
+
+function toBufferSource(data: WebAuthnBuffer): BufferSource {
+  return Uint8Array.from(toUint8Array(data));
 }
 
 const DECODER = new TextDecoder();
@@ -240,7 +251,7 @@ export async function verifyRegistrationResponse(
   // Step 11 - Hash the JSON bytes
   const hash = await crypto.subtle.digest(
     { name: "SHA-256" },
-    options.attestationResponse.clientDataJSON,
+    toBufferSource(options.attestationResponse.clientDataJSON),
   );
 
   // Step 12 - Decode the attestation object and so on
@@ -371,8 +382,8 @@ export async function verifyRegistrationResponse(
     backupState: authenticatorData.backupState,
     userVerified: authenticatorData.userVerified,
     signCount: authenticatorData.signCount,
-    clientDataJSON: new Uint8Array(options.attestationResponse.clientDataJSON),
-    attestationObject: new Uint8Array(
+    clientDataJSON: toUint8Array(options.attestationResponse.clientDataJSON),
+    attestationObject: toUint8Array(
       options.attestationResponse.attestationObject,
     ),
   };

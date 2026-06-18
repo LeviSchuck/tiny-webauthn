@@ -1,7 +1,9 @@
 import { decodePartialCBOR, parseCBORToCOSEKey } from "./deps.ts";
-import { AuthenticatorData } from "./types.ts";
+import type { AuthenticatorData } from "./types.ts";
 
-export function parseAuthenticatorData(data: ArrayBuffer): AuthenticatorData {
+export function parseAuthenticatorData(
+  data: ArrayBufferLike,
+): AuthenticatorData {
   const view = new DataView(data);
   const flags = view.getUint8(32);
 

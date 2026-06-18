@@ -1,0 +1,25 @@
+on:
+  push:
+    branches:
+      - main
+
+name: release-please
+
+jobs:
+  release-please:
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run attempt
+        env:
+          ATTEMPT: ${{ github.run_attempt }}
+        run: echo "Run attempt $ATTEMPT"
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_PAT }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

@@ -1,5 +1,5 @@
-import { assertEquals } from "https://deno.land/std@0.195.0/assert/mod.ts";
-import { describe, it } from "https://deno.land/std@0.195.0/testing/bdd.ts";
+import { assertEquals } from "@std/assert";
+import { describe, it } from "@std/testing/bdd";
 import { decodeBase64Url, ECDSA_SHA_256 } from "./deps.ts";
 import { unwrapAsn1EC2Signature } from "./verifier.ts";
 

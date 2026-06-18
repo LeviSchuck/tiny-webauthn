@@ -3,13 +3,10 @@ export {
   decodeBase64Url,
   encodeBase64,
   encodeBase64Url,
-} from "https://deno.land/x/tiny_encodings@0.2.1/index.ts";
+} from "@levischuck/tiny-encodings";
 
-export {
-  decodeCBOR,
-  decodePartialCBOR,
-} from "https://deno.land/x/tiny_cbor@0.2.2/index.ts";
-export type { CBORType } from "https://deno.land/x/tiny_cbor@0.2.2/index.ts";
+export { decodeCBOR, decodePartialCBOR } from "@levischuck/tiny-cbor";
+export type { CBORType } from "@levischuck/tiny-cbor";
 
 export {
   ECDSA_SHA_256,
@@ -21,10 +18,10 @@ export {
   RSASSA_PKCS1_v1_5_SHA_256,
   RSASSA_PKCS1_v1_5_SHA_384,
   RSASSA_PKCS1_v1_5_SHA_512,
-} from "https://deno.land/x/tiny_cose@0.0.9/index.ts";
+} from "@levischuck/tiny-cose";
 export type {
   ALG_ALL,
   COSEKeyAll,
   COSEPublicKey,
   ECDSA_ALG,
-} from "https://deno.land/x/tiny_cose@0.0.9/index.ts";
+} from "@levischuck/tiny-cose";

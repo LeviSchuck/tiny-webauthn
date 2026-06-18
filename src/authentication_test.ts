@@ -1,13 +1,10 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.195.0/assert/mod.ts";
-import { describe, it } from "https://deno.land/std@0.195.0/testing/bdd.ts";
+import { assert, assertEquals } from "@std/assert";
+import { describe, it } from "@std/testing/bdd";
 import { decodeBase64Url } from "./deps.ts";
 import { timingSafeEqual } from "./timingSafeEqual.ts";
 import {
-  AuthenticatingUser,
-  CredentialRecord,
+  type AuthenticatingUser,
+  type CredentialRecord,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from "./authentication.ts";
