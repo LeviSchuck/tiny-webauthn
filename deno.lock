@@ -3,10 +3,8 @@
   "specifiers": {
     "jsr:@david/code-block-writer@^13.0.3": "13.0.3",
     "jsr:@deno/dnt@~0.42.3": "0.42.3",
-    "jsr:@levischuck/tiny-cbor@~0.3.2": "0.3.6",
     "jsr:@levischuck/tiny-cbor@~0.3.6": "0.3.6",
-    "jsr:@levischuck/tiny-cose@^0.0.13": "0.0.13",
-    "jsr:@levischuck/tiny-encodings@~0.2.11": "0.2.13",
+    "jsr:@levischuck/tiny-cose@^0.0.14": "0.0.14",
     "jsr:@levischuck/tiny-encodings@~0.2.13": "0.2.13",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/crypto@^1.1.0": "1.1.0",
@@ -37,11 +35,11 @@
     "@levischuck/tiny-cbor@0.3.6": {
       "integrity": "ba06c8c1cd45d2daebd56defcb63c3bfafec3a1a56721467ccdfdafbab995ae7"
     },
-    "@levischuck/tiny-cose@0.0.13": {
-      "integrity": "a6129606a520cfe2b525a71fd289670c3f843a3341528356e1327136ce6f2b02",
+    "@levischuck/tiny-cose@0.0.14": {
+      "integrity": "acff6fbb3605c480bcd88495f71b594568ff3bfe135b65f458348c4796a92455",
       "dependencies": [
-        "jsr:@levischuck/tiny-cbor@~0.3.2",
-        "jsr:@levischuck/tiny-encodings@~0.2.11"
+        "jsr:@levischuck/tiny-cbor",
+        "jsr:@levischuck/tiny-encodings"
       ]
     },
     "@levischuck/tiny-encodings@0.2.13": {
@@ -100,7 +98,7 @@
     "dependencies": [
       "jsr:@deno/dnt@~0.42.3",
       "jsr:@levischuck/tiny-cbor@~0.3.6",
-      "jsr:@levischuck/tiny-cose@^0.0.13",
+      "jsr:@levischuck/tiny-cose@^0.0.14",
       "jsr:@levischuck/tiny-encodings@~0.2.13",
       "jsr:@std/assert@^1.0.19",
       "jsr:@std/crypto@^1.1.0",
