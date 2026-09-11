@@ -13,15 +13,15 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: '25'
+          node-version: '24'
       - name: Ensure npm >= 11.5.1 for OIDC
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
       - name: Get tag version
         id: get_tag_version
         run: echo TAG_VERSION=$(cat "version.txt") >> $GITHUB_OUTPUT
