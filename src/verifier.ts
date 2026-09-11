@@ -3,6 +3,9 @@ import {
   type ECDSA_ALG,
   ECDSA_SHA_256,
   EDDSA,
+  ML_DSA_44,
+  ML_DSA_65,
+  ML_DSA_87,
   RSASSA_PKCS1_v1_5_SHA_256,
 } from "./deps.ts";
 
@@ -115,6 +118,20 @@ export async function verifySignature(
   } else if (alg == EDDSA) {
     return await crypto.subtle.verify(
       { name: "Ed25519" },
+      key,
+      signature,
+      data,
+    );
+  } else if (
+    alg == ML_DSA_44 || alg == ML_DSA_65 || alg == ML_DSA_87
+  ) {
+    const name = alg == ML_DSA_44
+      ? "ML-DSA-44"
+      : alg == ML_DSA_65
+      ? "ML-DSA-65"
+      : "ML-DSA-87";
+    return await crypto.subtle.verify(
+      { name },
       key,
       signature,
       data,
