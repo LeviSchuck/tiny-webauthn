@@ -13,6 +13,9 @@ import {
   ECDSA_SHA_256,
   EDDSA,
   importPublicKey,
+  ML_DSA_44,
+  ML_DSA_65,
+  ML_DSA_87,
   RSASSA_PKCS1_v1_5_SHA_256,
 } from "./deps.ts";
 import { timingSafeEqual } from "./timingSafeEqual.ts";
@@ -307,7 +310,9 @@ export async function verifyRegistrationResponse(
 
   if (
     (credentialAlg != ECDSA_SHA_256 &&
-      credentialAlg != RSASSA_PKCS1_v1_5_SHA_256 && credentialAlg != EDDSA) ||
+      credentialAlg != RSASSA_PKCS1_v1_5_SHA_256 && credentialAlg != EDDSA &&
+      credentialAlg != ML_DSA_44 && credentialAlg != ML_DSA_65 &&
+      credentialAlg != ML_DSA_87) ||
     expectedAlgorithms.indexOf(credentialAlg) === -1
   ) {
     throw new Error(`Unexpected credential algorithm ${credentialAlg}`);

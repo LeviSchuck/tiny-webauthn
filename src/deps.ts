@@ -14,6 +14,9 @@ export {
   ECDSA_SHA_512,
   EDDSA,
   importPublicKey,
+  ML_DSA_44,
+  ML_DSA_65,
+  ML_DSA_87,
   parseCBORToCOSEKey,
   RSASSA_PKCS1_v1_5_SHA_256,
   RSASSA_PKCS1_v1_5_SHA_384,
@@ -24,4 +27,5 @@ export type {
   COSEKeyAll,
   COSEPublicKey,
   ECDSA_ALG,
+  ML_DSA_ALG,
 } from "@levischuck/tiny-cose";

@@ -3,7 +3,7 @@ import type { CBORType, COSEKeyAll } from "./deps.ts";
 
 export type WebAuthnBuffer = ArrayBufferLike | Uint8Array;
 
-export type COSEAlgorithmIdentifier = -7 | -257 | -8;
+export type COSEAlgorithmIdentifier = -7 | -257 | -8 | -48 | -49 | -50;
 export type UserVerificationRequirement =
   | "discouraged"
   | "preferred"
