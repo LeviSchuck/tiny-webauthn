@@ -4,12 +4,15 @@
     "jsr:@david/code-block-writer@^13.0.3": "13.0.3",
     "jsr:@deno/dnt@~0.42.3": "0.42.3",
     "jsr:@levischuck/tiny-cbor@~0.3.6": "0.3.6",
-    "jsr:@levischuck/tiny-cose@^0.0.14": "0.0.14",
+    "jsr:@levischuck/tiny-cose@^0.0.15": "0.0.15",
     "jsr:@levischuck/tiny-encodings@~0.2.13": "0.2.13",
     "jsr:@std/assert@^1.0.19": "1.0.19",
+    "jsr:@std/async@^1.4.0": "1.4.0",
     "jsr:@std/crypto@^1.1.0": "1.1.0",
+    "jsr:@std/data-structures@^1.1.0": "1.1.0",
     "jsr:@std/fmt@1": "1.0.10",
     "jsr:@std/fs@1": "1.0.24",
+    "jsr:@std/fs@^1.0.24": "1.0.24",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@1": "1.1.5",
@@ -27,7 +30,7 @@
       "dependencies": [
         "jsr:@david/code-block-writer",
         "jsr:@std/fmt",
-        "jsr:@std/fs",
+        "jsr:@std/fs@1",
         "jsr:@std/path@1",
         "jsr:@ts-morph/bootstrap"
       ]
@@ -35,8 +38,8 @@
     "@levischuck/tiny-cbor@0.3.6": {
       "integrity": "ba06c8c1cd45d2daebd56defcb63c3bfafec3a1a56721467ccdfdafbab995ae7"
     },
-    "@levischuck/tiny-cose@0.0.14": {
-      "integrity": "acff6fbb3605c480bcd88495f71b594568ff3bfe135b65f458348c4796a92455",
+    "@levischuck/tiny-cose@0.0.15": {
+      "integrity": "13dd3952a677bad04b8a2416a07d60e5b1c79865ba42bef77cbdcf994356c767",
       "dependencies": [
         "jsr:@levischuck/tiny-cbor",
         "jsr:@levischuck/tiny-encodings"
@@ -51,8 +54,14 @@
         "jsr:@std/internal@^1.0.12"
       ]
     },
+    "@std/async@1.4.0": {
+      "integrity": "4d70b008634f571cff9b554090d628c76141c32613aae0ff283fd5fa23d0c379"
+    },
     "@std/crypto@1.1.0": {
       "integrity": "b8d6d0a6377a32b213af2661ed7bf1062d94feac0c57def5526a8e74a95c3ec8"
+    },
+    "@std/data-structures@1.1.0": {
+      "integrity": "c35ae4ad5d8e41a38573c2fe3e19b18ea2505f63cfea201edcb8720aca1f7f58"
     },
     "@std/fmt@1.0.10": {
       "integrity": "90dfba288802ac6de82fb31d0917eb9e4450b9925b954d5e51fc29ac07419db5"
@@ -77,7 +86,11 @@
       "integrity": "f4236172365b216728dc3cc8b5e80a9f4c33083d1e4ede7613d5b25b4014898e",
       "dependencies": [
         "jsr:@std/assert",
-        "jsr:@std/internal@^1.0.14"
+        "jsr:@std/async",
+        "jsr:@std/data-structures",
+        "jsr:@std/fs@^1.0.24",
+        "jsr:@std/internal@^1.0.14",
+        "jsr:@std/path@^1.1.5"
       ]
     },
     "@ts-morph/bootstrap@0.27.0": {
@@ -89,7 +102,7 @@
     "@ts-morph/common@0.27.0": {
       "integrity": "c7b73592d78ce8479b356fd4f3d6ec3c460d77753a8680ff196effea7a939052",
       "dependencies": [
-        "jsr:@std/fs",
+        "jsr:@std/fs@1",
         "jsr:@std/path@1"
       ]
     }
@@ -98,7 +111,7 @@
     "dependencies": [
       "jsr:@deno/dnt@~0.42.3",
       "jsr:@levischuck/tiny-cbor@~0.3.6",
-      "jsr:@levischuck/tiny-cose@^0.0.14",
+      "jsr:@levischuck/tiny-cose@^0.0.15",
       "jsr:@levischuck/tiny-encodings@~0.2.13",
       "jsr:@std/assert@^1.0.19",
       "jsr:@std/crypto@^1.1.0",
