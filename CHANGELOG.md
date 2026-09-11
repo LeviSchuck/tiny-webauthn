@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/LeviSchuck/tiny-webauthn/compare/v0.1.3...v0.2.0) (2026-09-11)
+
+
+### Features
+
+* Post Quantum Algorithms ([#5](https://github.com/LeviSchuck/tiny-webauthn/issues/5)) ([3655a93](https://github.com/LeviSchuck/tiny-webauthn/commit/3655a93bac299caf362efa950815a2ec1002aa4a))
+
 ## [0.1.3](https://github.com/LeviSchuck/tiny-webauthn/compare/v0.1.2...v0.1.3) (2026-09-11)
 
 
