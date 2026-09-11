@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/LeviSchuck/tiny-webauthn/compare/v0.1.2...v0.1.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* Bump tiny-cose ([8d8b048](https://github.com/LeviSchuck/tiny-webauthn/commit/8d8b0485e45ff4cb7bd443cd5ae9d3586edb74b2))
+
 ## [0.1.2](https://github.com/LeviSchuck/tiny-webauthn/compare/v0.1.1...v0.1.2) (2026-06-18)
 
 
